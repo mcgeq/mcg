@@ -1,0 +1,31 @@
+* mg - Multi-Language Project Management CLI
+
+[[https://opensource.org/licenses/MIT][[https://img.shields.io/badge/License-MIT-blue.svg]]]
+[[https://www.rust-lang.org/][[https://img.shields.io/badge/Rust-1.60%2B-brightgreen]]]
+
+A powerful CLI tool for file/directory operations and
+*multi-language*  project management (Python/Rust/JavaScript).
+Automatically detects project types and handles package management tasks.
+
+** Features
+- *File/Directory Operations*:
+  - Create/Remove/Copy files and directories
+  - Recursive operations by default
+- *Package Management*:
+  - *Frontend*: npm/pnpm/yarn/bun support
+  - *Python*: pip/Poetry support
+  - *Rust*: Cargo support
+- *Cross-Platform*: Works on Linux/macOS/Windows
+- *Colorful Output*: Clear success/error feedback
+
+** Installation
+
+*** From Source
+#+BEGIN_SRC bash
+# Clone repository
+git clone https://github.com/mcgeq/mg.git
+
+cd mg
+
+cargo install --path .
+#+END_SRC
