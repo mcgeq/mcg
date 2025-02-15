@@ -1,12 +1,14 @@
 use clap::Parser;
 use commands::{Cli, Commands};
 use file_ops::{copy_dir, copy_file, create_file, create_fir, remove_dir, remove_file};
-use package_manager::{add_package, analyze_dependencies, install_dependencies, remove_package, upgrade_package};
+use package_manager::{
+    add_package, analyze_dependencies, install_dependencies, remove_package, upgrade_package,
+};
 
 mod commands;
 mod file_ops;
-mod utils;
 mod package_manager;
+mod utils;
 
 fn main() {
     let cli = Cli::parse();

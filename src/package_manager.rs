@@ -5,223 +5,81 @@
 // File:           package_manager.rs
 // Description:    About Web package install
 // Create   Date:  2025-02-15 11:28:47
-// Last Modified:  2025-02-15 13:24:32
+// Last Modified:  2025-02-15 14:27:17
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // -----------------------------------------------------------------------------
 
+pub mod frontend;
+pub mod python;
+pub mod rust;
+
 use std::path::Path;
 
-use std::process::Command;
-use colored::Colorize;
+use crate::utils::error_message;
 
-use crate::utils::{error_message, info_message, success_message, warning_message};
 
-// 检测锁文件优先级
-const LOCK_FILES: [(&str, &str); 4] = [
-    ("bun.lockb", "bun"),
-    ("pnpm-lock.yaml", "pnpm"),
-    ("yarn.lock", "yarn"),
-    ("package-lock.json", "npm"),
-];
-
-pub fn detect_manager() -> Option<&'static str> {
-    for (file, manager) in LOCK_FILES {
-        if Path::new(file).exists() {
-            return Some(manager);
-        }
-    }
-    None
+// 检测项目类型
+pub enum ProjectType {
+    Frontend,
+    Python,
+    Rust,
+    Unknown,
 }
 
+pub fn detect_project_type() -> ProjectType {
+    if Path::new("package.json").exists() {
+        ProjectType::Frontend
+    } else if Path::new("Cargo.toml").exists() {
+        ProjectType::Rust
+    } else if Path::new("requirements.txt").exists() || Path::new("pyproject.toml").exists() {
+        ProjectType::Python
+    } else {
+        ProjectType::Unknown
+    }
+}
+
+// 统一函数入口
 pub fn install_dependencies(frozen: bool) -> Result<(), String> {
-    // 检查package.json
-    if !Path::new("package.json").exists() {
-        return Err(error_message("No package.json file found"));
-    }
-
-    let manager = match detect_manager() {
-        Some(m) => m,
-        None => {
-            println!("{}", warning_message("No lockfile detected, using npm by default"));
-            "npm"
-        }
-    };
-    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
-
-    let mut command = Command::new(manager);
-
-    match manager {
-        "npm" | "bun" => {
-            command.arg("install");
-            if frozen {
-                command.arg("--frozen-lockfile");
-            }
-        },
-        "pnpm" => {
-            command.arg("install");
-            if frozen {
-                command.arg("--frozen-lockfile");
-            }
-        },
-        "yarn" => {
-            if frozen {
-                command.arg("install --immutable");
-            } else {
-                command.arg("install");
-            }
-        },
-        _ => return Err(error_message("Unsupported package manager")),
-    }
-
-    let status = command.status()
-        .map_err(|e| error_message(&format!("Failed to execute command: {}", e)))?;
-
-    if status.success() {
-        println!("{}", success_message("Dependencies installed successfully"));
-        Ok(())
-    } else {
-        Err(error_message("Failed to install dependencies"))
+    match detect_project_type() {
+        ProjectType::Frontend => frontend::install(frozen),
+        ProjectType::Python => python::install(),
+        ProjectType::Rust => rust::install(),
+        ProjectType::Unknown => Err(error_message("No support project detected")),
     }
 }
 
-/// Add package
 pub fn add_package(package: &str, dev: bool) -> Result<(), String> {
-    let manager = detect_manager().unwrap_or("npm");
-
-    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
-
-    let mut command = Command::new(manager);
-    match manager {
-        "npm" | "bun" => {
-            command.arg("install").arg(package);
-            if dev {
-                command.arg("--save-dev");
-            }
-        },
-        "pnpm" => {
-            command.arg("add").arg(package);
-            if dev {
-                command.arg("--save-dev");
-            }
-        },
-        "yarn" => {
-            command.arg("add").arg(package);
-            if dev {
-                command.arg("--dev");
-            }
-        },
-        _ => return Err(error_message("Unsupported package manager")),
-    }
-
-    let status = command.status()
-        .map_err(|e| error_message(&format!("Failed to execute command: {}", e)))?;
-
-    if status.success() {
-        println!("{}", success_message("Package added successfully"));
-        Ok(())
-    } else {
-        Err(error_message("Failed to add package"))
+    match detect_project_type() {
+        ProjectType::Frontend => frontend::add_package(package, dev),
+        ProjectType::Python => python::add_package(package, dev),
+        ProjectType::Rust => rust::add_package(package),
+        ProjectType::Unknown => Err(error_message("No support project detected")),
     }
 }
 
-/// Upgrade package
 pub fn upgrade_package(package: Option<&str>) -> Result<(), String> {
-    let manager = detect_manager().unwrap_or("npm");
-
-    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
-
-    let mut command = Command::new(manager);
-    match manager {
-        "npm" | "bun" => {
-            command.arg("install");
-            if let Some(pkg) = package {
-                command.arg(pkg);
-            }
-        },
-        "pnpm" => {
-            command.arg("upgrade");
-            if let Some(pkg) = package {
-                command.arg(pkg);
-            }
-        },
-        "yarn" => {
-            command.arg("upgrade");
-            if let Some(pkg) = package {
-                command.arg(pkg);
-            }
-        },
-        _ => return Err(error_message("Unsupported package manager")),
-    }
-
-    let status = command.status()
-        .map_err(|e| error_message(&format!("Failed to execute command: {}", e)))?;
-
-    if status.success() {
-        println!("{}", success_message("Package upgraded successfully"));
-        Ok(())
-    } else {
-        Err(error_message("Failed to upgrade package"))
+    match detect_project_type() {
+        ProjectType::Frontend => frontend::upgrade_package(package),
+        ProjectType::Python => python::upgrade_package(package),
+        ProjectType::Rust => rust::upgrade_package(package),
+        ProjectType::Unknown => Err(error_message("No support project detected")),
     }
 }
 
-/// Remove package
 pub fn remove_package(package: &str) -> Result<(), String> {
-    let manager = detect_manager().unwrap_or("npm");
-
-    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
-
-    let mut command = Command::new(manager);
-    match manager {
-        "npm" | "bun" => {
-            command.arg("uninstall").arg(package);
-        },
-        "pnpm" => {
-            command.arg("remove").arg(package);
-        },
-        "yarn" => {
-            command.arg("remove").arg(package);
-        },
-        _ => return Err(error_message("Unsupported package manager")),
-    }
-
-    let status = command.status()
-        .map_err(|e| error_message(&format!("Failed to execute command: {}", e)))?;
-
-    if status.success() {
-        println!("{}", success_message("Package removed successfully"));
-        Ok(())
-    } else {
-        Err(error_message("Failed to remove package"))
+    match detect_project_type() {
+        ProjectType::Frontend => frontend::remove_package(package),
+        ProjectType::Python => python::remove_package(package),
+        ProjectType::Rust => rust::remove_package(package),
+        ProjectType::Unknown => Err(error_message("No support project detected")),
     }
 }
 
-/// Analyze package dependencies
 pub fn analyze_dependencies() -> Result<(), String> {
-    let manager = detect_manager().unwrap_or("npm");
-
-    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
-
-    let mut command = Command::new(manager);
-    match manager {
-        "npm" | "bun" => {
-            command.arg("list");
-        },
-        "pnpm" => {
-            command.arg("list");
-        },
-        "yarn" => {
-            command.arg("list");
-        },
-        _ => return Err(error_message("Unsupported package manager")),
-    }
-
-    let status = command.status()
-        .map_err(|e| error_message(&format!("Failed to execute command: {}", e)))?;
-
-    if status.success() {
-        println!("{}", success_message("Dependencies analyzed successfully"));
-        Ok(())
-    } else {
-        Err(error_message("Failed to analyze dependencies"))
+    match detect_project_type() {
+        ProjectType::Frontend => frontend::analyze_dependencies(),
+        ProjectType::Python => python::analyze_dependencies(),
+        ProjectType::Rust => rust::analyze_dependencies(),
+        ProjectType::Unknown => Err(error_message("No support project detected")),
     }
 }

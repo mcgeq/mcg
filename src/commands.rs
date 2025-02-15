@@ -5,7 +5,7 @@
 // File:           commands.rs
 // Description:    About Command
 // Create   Date:  2025-02-15 10:38:41
-// Last Modified:  2025-02-15 13:29:42
+// Last Modified:  2025-02-15 14:35:34
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // ----------------------------------------------------------------------------
 
@@ -23,11 +23,16 @@ use clap::{Parser, Subcommand};
     Create a file           : mg -fc file.txt\n\
     Remove a file           : mg -fr file.txt\n\
     Copy a file             : mg -fy src.txt dest.txt\n\
+    # Package Management\n\
     Install dependencies    : mg install (or mg i)\n\
     Add a package           : mg add lodash (or mg a lodash)\n\
     Upgrade a package       : mg upgrade lodash (or mg u lodash)\n\
     Remove a package        : mg remove lodash (or mg r lodash)\n\
-    Analyze dependencies    : mg analyze (or mg an)\n"
+    Analyze dependencies    : mg analyze (or mg an)\n\
+    # Language-specific example\n\
+    Python                  : mg add requests\n\
+    Rust                    : mg add serde\n\
+    Frontend                : mg add react\n"
 )]
 pub struct Cli {
     #[command(subcommand)]
