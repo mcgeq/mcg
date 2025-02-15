@@ -91,41 +91,5 @@ cargo install --path .
   mg remove outdated-package
 #+end_src
 
-* Configuration
-** Environment Variables
-| Variable       | Description                     | Default |
-|----------------+---------------------------------+---------|
-| MG_LOG_LEVEL   | Set log level (info/debug/warn) | info    |
-
-* Contributing
-** How to Help
-- Report bugs in our [[https://github.com/mcgeq/mg/issues][issue tracker]]
-- Suggest new features
-- Improve documentation
-- Submit pull requests
-
-** Development Workflow
-1. Fork the repository
-2. Create feature branch:
-#+BEGIN_SRC bash
-   git checkout -b feature/awesome-feature
-#+END_SRC
-3. Commit changes with descriptive messages
-4. Push to your fork
-5. Open a [[https://github.com/mcgeq/mg/pulls][Pull Request]]
-
-** Code Standards
-- Follow Rustfmt formatting
-- Include unit tests
-- Update documentation accordingly
-
-* Acknowledgments
-** Special Thanks
-- The Rust community for excellent tooling
-- Early adopters for valuable feedback
-- Open source projects we depend on:
-  - [[https://github.com/clap-rs/clap][clap]] for command-line parsing
-  - [[https://github.com/mackwic/colored][colored]] for terminal colors
-
 * License
 Distributed under the MIT License. See [[file:LICENSE][LICENSE file]] for full text.
