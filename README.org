@@ -1,4 +1,4 @@
-* mg - Multi-Language Project Management CLI
+#+TITLE: mg - Multi-Language Project Management CLI
 
 #+HTML: <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
 #+HTML: <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.84%2B-brightgreen" alt="Rust 1.84+"></a>
@@ -8,25 +8,124 @@ A powerful CLI tool for file/directory operations and
 *multi-language*  project management (Python/Rust/JavaScript).
 Automatically detects project types and handles package management tasks.
 
-** Features
-- *File/Directory Operations*:
-  - Create/Remove/Copy files and directories
-  - Recursive operations by default
-- *Package Management*:
-  - *Frontend*: npm/pnpm/yarn/bun support
-  - *Python*: pip/Poetry support
-  - *Rust*: Cargo support
-- *Cross-Platform*: Works on Linux/macOS/Windows
-- *Colorful Output*: Clear success/error feedback
+* Features
+** File/Directory Operations
+- Create/Remove/Copy files and directories
+- Recursive operations by default
 
-** Installation
+** Package Management
+- *Frontend*: npm/pnpm/yarn/bun support
+- *Python*: pip/Poetry support
+- *Rust*: Cargo support
 
-*** From Source
+** Cross-Platform
+Works on Linux/macOS/Windows
+
+** Colorful Output
+Clear success/error feedback
+
+* Installation
+** From Source
 #+BEGIN_SRC bash
-# Clone repository
-git clone https://github.com/mcgeq/mg.git
-
+git clone https://github.com/yourusername/mg.git
 cd mg
-
 cargo install --path .
 #+END_SRC
+
+* Usage
+** Basic Operations
+*** About Directory
+#+begin_src bash
+  # create directory
+  mg -dc path/to/new/directory
+  # remove directory
+  mg -dr path/to/new/directory
+  # copy directory
+  mg -dy path/src/directory path/dest/directory
+#+end_src
+
+*** About Files
+#+begin_src bash
+  # create file
+  mg -fc file.txt
+  # remove file
+  mg -fr file.txt
+  # copy file
+  mg -fy src.txt dest.txt
+#+end_src
+
+** Package Management
+*** Install
+
+#+begin_src bash
+  # For all project types
+  mg install
+  # Install frozen dependencies (frontend projects)
+  mg install --frozen
+#+end_src
+
+*** Add Packages
+#+begin_src bash
+  # Frontend (npm/yarn/pnpm/bun)
+  mg add react
+  mg add lodash --dev
+
+  # Python (pip)
+  mg add requests
+
+  # Rust (cargo)
+  mg add serde
+#+end_src
+
+*** Upgrade Packages
+#+begin_src bash
+  # Upgrade specific package
+  mg upgrade lodash
+
+  # Upgrade all packages (language-specific)
+  mg upgrade
+#+end_src
+
+*** Remove Pakcgaes
+#+begin_src bash
+  mg remove outdated-package
+#+end_src
+
+* Configuration
+** Environment Variables
+| Variable       | Description                     | Default |
+|----------------+---------------------------------+---------|
+| MG_LOG_LEVEL   | Set log level (info/debug/warn) | info    |
+
+* Contributing
+** How to Help
+- Report bugs in our [[https://github.com/mcgeq/mg/issues][issue tracker]]
+- Suggest new features
+- Improve documentation
+- Submit pull requests
+
+** Development Workflow
+1. Fork the repository
+2. Create feature branch:
+#+BEGIN_SRC bash
+   git checkout -b feature/awesome-feature
+#+END_SRC
+3. Commit changes with descriptive messages
+4. Push to your fork
+5. Open a [[https://github.com/mcgeq/mg/pulls][Pull Request]]
+
+** Code Standards
+- Follow Rustfmt formatting
+- Include unit tests
+- Update documentation accordingly
+
+* Acknowledgments
+** Special Thanks
+- The Rust community for excellent tooling
+- Early adopters for valuable feedback
+- Open source projects we depend on:
+  - [[https://github.com/clap-rs/clap][clap]] for command-line parsing
+  - [[https://github.com/mackwic/colored][colored]] for terminal colors
+
+* License
+Distributed under the MIT License. See [[file:LICENSE][LICENSE file]] for full text.
