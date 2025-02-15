@@ -5,7 +5,7 @@
 // File:           commands.rs
 // Description:    About Command
 // Create   Date:  2025-02-15 10:38:41
-// Last Modified:  2025-02-15 11:44:41
+// Last Modified:  2025-02-15 12:16:32
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // ----------------------------------------------------------------------------
 
@@ -15,6 +15,16 @@ use clap::{Parser, Subcommand};
 #[command(name = "mg")]
 #[command(about = "A powerful CLI tool for file/directory operations and project management",
     version)]
+#[command(
+    after_help = "Examples:\n\
+    Create a directory      : mg -dc ./dir\n\
+    Remove a directory      : mg -dr ./dir\n\
+    Copy a directory        : mg -dy ./src ./dest\n\
+    Create a file           : mg -fc file.txt\n\
+    Remove a file           : mg -fr file.txt\n\
+    Copy a file             : mg -fy src.txt dest.txt\n\
+    Install dependencies    : mg install\n"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -22,49 +32,45 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// 创建目录
+    /// Create a directory (recursive by default)
     #[command(name = "-dc")]
     DirCreate {
         path: String,
-        #[arg(short, long)]
-        parents: bool,
     },
 
-    /// 删除目录
+    /// Remove a directory (recursive by default)
     #[command(name = "-dr")]
     DirRemove {
         path: String,
-        #[arg(short, long)]
-        force: bool,
     },
 
-    /// 复制目录
-    #[command(name = "-dp")]
+    /// Copy a directory
+    #[command(name = "-dy")]
     DirCopy {
         src: String,
         dest: String,
     },
 
-    /// 创建文件
+    /// Create a file
     #[command(name = "-fc")]
     FileCreate {
         filename: String,
     },
 
-    /// 删除文件
+    /// Remove a file
     #[command(name = "-fr")]
     FileRemove {
         path: String,
     },
 
-    /// 复制文件
-    #[command(name = "-fp")]
+    /// Copy a file
+    #[command(name = "-fy")]
     FileCopy {
         src: String,
         dest: String,
     },
 
-    /// 安装项目依赖
+    /// Install project dependencies
     Install {
         #[arg(short, long)]
         frozen: bool,

@@ -12,8 +12,8 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Commands::DirCreate { path, parents } => create_fir(&path, parents),
-        Commands::DirRemove { path, force } => remove_dir(&path, force),
+        Commands::DirCreate { path } => create_fir(&path),
+        Commands::DirRemove { path } => remove_dir(&path),
         Commands::DirCopy { src, dest } => copy_dir(&src, &dest),
         Commands::FileCreate { filename } => create_file(&filename),
         Commands::FileRemove { path } => remove_file(&path),

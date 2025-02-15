@@ -5,7 +5,7 @@
 // File:           file_ops.rs
 // Description:    About file operations
 // Create   Date:  2025-02-15 10:55:45
-// Last Modified:  2025-02-15 11:54:38
+// Last Modified:  2025-02-15 12:01:03
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // -----------------------------------------------------------------------------
 
@@ -13,27 +13,21 @@ use std::{fs, path::Path};
 
 use crate::utils::{error_message, success_message};
 
-pub fn create_fir(path: &str, parents: bool) -> Result<(), String> {
+pub fn create_fir(path: &str) -> Result<(), String> {
     let path = Path::new(path);
 
-    if parents {
-        fs::create_dir_all(path)
-    } else {
-        fs::create_dir(path)
-    }.map_err(|e| error_message(&format!("Failed to create directory: {}", e)))?;
+    fs::create_dir_all(path)
+    .map_err(|e| error_message(&format!("Failed to create directory: {}", e)))?;
 
     println!("{} '{}'", success_message("Director created successfully"), path.display());
     Ok(())
 }
 
-pub fn remove_dir(path: &str, force: bool) -> Result<(), String> {
+pub fn remove_dir(path: &str) -> Result<(), String> {
     let path = Path::new(path);
 
-    if force {
-        fs::remove_dir_all(path)
-    } else {
-        fs::remove_dir(path)
-    }.map_err(|e| error_message(&format!("Failed to remove director: {}", e)))?;
+    fs::remove_dir_all(path)
+    .map_err(|e| error_message(&format!("Failed to remove director: {}", e)))?;
 
     println!("{} '{}", success_message("Director removed successfully"), path.display());
     Ok(())
