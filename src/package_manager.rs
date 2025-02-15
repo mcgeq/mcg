@@ -5,7 +5,7 @@
 // File:           package_manager.rs
 // Description:    About Web package install
 // Create   Date:  2025-02-15 11:28:47
-// Last Modified:  2025-02-15 12:45:03
+// Last Modified:  2025-02-15 13:24:32
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // -----------------------------------------------------------------------------
 
@@ -88,6 +88,8 @@ pub fn install_dependencies(frozen: bool) -> Result<(), String> {
 pub fn add_package(package: &str, dev: bool) -> Result<(), String> {
     let manager = detect_manager().unwrap_or("npm");
 
+    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
+
     let mut command = Command::new(manager);
     match manager {
         "npm" | "bun" => {
@@ -125,6 +127,8 @@ pub fn add_package(package: &str, dev: bool) -> Result<(), String> {
 /// Upgrade package
 pub fn upgrade_package(package: Option<&str>) -> Result<(), String> {
     let manager = detect_manager().unwrap_or("npm");
+
+    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
 
     let mut command = Command::new(manager);
     match manager {
@@ -164,6 +168,8 @@ pub fn upgrade_package(package: Option<&str>) -> Result<(), String> {
 pub fn remove_package(package: &str) -> Result<(), String> {
     let manager = detect_manager().unwrap_or("npm");
 
+    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
+
     let mut command = Command::new(manager);
     match manager {
         "npm" | "bun" => {
@@ -192,6 +198,8 @@ pub fn remove_package(package: &str) -> Result<(), String> {
 /// Analyze package dependencies
 pub fn analyze_dependencies() -> Result<(), String> {
     let manager = detect_manager().unwrap_or("npm");
+
+    println!("{} {}", info_message("Detected package manager:"), manager.cyan());
 
     let mut command = Command::new(manager);
     match manager {

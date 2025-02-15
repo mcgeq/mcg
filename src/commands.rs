@@ -5,7 +5,7 @@
 // File:           commands.rs
 // Description:    About Command
 // Create   Date:  2025-02-15 10:38:41
-// Last Modified:  2025-02-15 13:04:04
+// Last Modified:  2025-02-15 13:29:42
 // Modified   By:  mcgeq <mcgeq@outlook.com>
 // ----------------------------------------------------------------------------
 
@@ -23,11 +23,11 @@ use clap::{Parser, Subcommand};
     Create a file           : mg -fc file.txt\n\
     Remove a file           : mg -fr file.txt\n\
     Copy a file             : mg -fy src.txt dest.txt\n\
-    Install dependencies    : mg install\n\
-    Add a package           : mg add loadsh\n\
-    Upgrade a package       : mg upgrade loadash\n\
-    Remove a package        : mg remove loadash\n\
-    Analyze dependencies    : mg analyze\n"
+    Install dependencies    : mg install (or mg i)\n\
+    Add a package           : mg add lodash (or mg a lodash)\n\
+    Upgrade a package       : mg upgrade lodash (or mg u lodash)\n\
+    Remove a package        : mg remove lodash (or mg r lodash)\n\
+    Analyze dependencies    : mg analyze (or mg an)\n"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -74,22 +74,15 @@ pub enum Commands {
         dest: String,
     },
 
-    /// Management project dependencies
-    #[command(subcommand)]
-    Package(PackageCommands),
-}
-
-#[derive(Subcommand)]
-pub enum PackageCommands {
     /// install dependencies
-    #[command(name = "install", alias = "i")]
+    #[command(name = "install", alias = "i", about = "Install dependencies (alias: i)")]
     Install {
         #[arg(short, long)]
         frozen: bool,
     },
 
     /// Add package
-    #[command(name = "add", alias = "a")]
+    #[command(name = "add", alias = "a", about = "Add a package (alias: a)")]
     Add {
         package: String,
         #[arg(short, long)]
@@ -97,18 +90,19 @@ pub enum PackageCommands {
     },
 
     /// Upgrade package
-    #[command(name = "upgrade", alias = "u")]
+    #[command(name = "upgrade", alias = "u", about = "Upgrade a package (alias: u)")]
     Upgrade {
         package: Option<String>,
     },
 
     /// Delete package
-    #[command(name = "remove", alias = "r")]
+    #[command(name = "remove", alias = "r", about = "Remove a package (alias: r)")]
     Remove {
         package: String,
     },
 
     /// Analyze package dependencies
-    #[command(name = "analyze", alias = "an")]
+    #[command(name = "analyze", alias = "an", about = "Analyze dependencies (alias: an)")]
     Analyze,
+
 }
