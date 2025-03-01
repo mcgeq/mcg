@@ -1,5 +1,5 @@
-use super::types::{DependencyInfo, PackageManager, PackageOptions};
-use anyhow::{Context, Result};
+use super::types::{PackageManager, PackageOptions};
+use anyhow::Result;
 use std::process::Command;
 
 pub struct Npm;
@@ -49,35 +49,19 @@ impl PackageManager for Npm {
         Ok(())
     }
 
-    fn analyze(&self) -> Result<Vec<DependencyInfo>> {
-        let output = Command::new("npm")
-            .args(["list", "--json", "--depth=0"])
-            .output()
-            .context("Failed to get npm dependencies")?;
+    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
+        let mut cmd = Command::new("npm");
+        cmd.arg("list");
 
-        parse_npm_output(&String::from_utf8_lossy(&output.stdout))
+        // 添加包名（如果指定）
+        if !packages.is_empty() {
+            cmd.arg(&packages[0]);
+        }
+
+        // 添加其他参数
+        cmd.args(&options.args);
+
+        let output = cmd.output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-}
-
-fn parse_npm_output(output: &str) -> Result<Vec<DependencyInfo>> {
-    #[derive(serde::Deserialize)]
-    struct NpmDependency {
-        version: String,
-    }
-
-    #[derive(serde::Deserialize)]
-    struct NpmTree {
-        dependencies: std::collections::HashMap<String, NpmDependency>,
-    }
-
-    let tree: NpmTree = serde_json::from_str(output)?;
-    Ok(tree
-        .dependencies
-        .into_iter()
-        .map(|(name, dep)| DependencyInfo {
-            name,
-            version: dep.version,
-            dependencies: Vec::new(),
-        })
-        .collect())
 }

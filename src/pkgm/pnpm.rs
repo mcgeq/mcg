@@ -1,5 +1,5 @@
-use super::types::{DependencyInfo, PackageManager, PackageOptions};
-use anyhow::{Context, Result};
+use super::types::{PackageManager, PackageOptions};
+use anyhow::Result;
 use std::process::Command;
 
 pub struct Pnpm;
@@ -49,30 +49,19 @@ impl PackageManager for Pnpm {
         Ok(())
     }
 
-    fn analyze(&self) -> Result<Vec<DependencyInfo>> {
-        let output = Command::new("pnpm")
-            .args(["list"])
-            .output()
-            .context("Failed to get pnpm dependencies")?;
+    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
+        let mut cmd = Command::new("pnpm");
+        cmd.arg("list");
 
-        parse_pnpm_output(&String::from_utf8_lossy(&output.stdout))
+        // 添加包名（如果指定）
+        if !packages.is_empty() {
+            cmd.arg(&packages[0]);
+        }
+
+        // 添加其他参数
+        cmd.args(&options.args);
+
+        let output = cmd.output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-}
-
-fn parse_pnpm_output(output: &str) -> Result<Vec<DependencyInfo>> {
-    #[derive(serde::Deserialize)]
-    struct PnpmPackage {
-        name: String,
-        version: String,
-    }
-
-    let packages: Vec<PnpmPackage> = serde_json::from_str(output)?;
-    Ok(packages
-        .into_iter()
-        .map(|pkg| DependencyInfo {
-            name: pkg.name,
-            version: pkg.version,
-            dependencies: Vec::new(),
-        })
-        .collect())
 }

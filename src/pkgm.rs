@@ -11,4 +11,4 @@ mod yarn;
 
 pub use detect::detect;
 pub use manager::execute_with_prompt;
-pub use types::{DependencyInfo, PackageOptions};
+pub use types::PackageOptions;

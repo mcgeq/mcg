@@ -47,5 +47,5 @@ pub trait PackageManager {
         options: &PackageOptions,
     ) -> Result<()>;
 
-    fn analyze(&self) -> Result<Vec<DependencyInfo>>;
+    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String>;
 }

@@ -1,5 +1,5 @@
-use super::types::{DependencyInfo, PackageManager, PackageOptions};
-use anyhow::{Context, Result};
+use super::types::{PackageManager, PackageOptions};
+use anyhow::Result;
 use std::process::Command;
 
 pub struct Pip;
@@ -49,30 +49,21 @@ impl PackageManager for Pip {
         Ok(())
     }
 
-    fn analyze(&self) -> Result<Vec<DependencyInfo>> {
-        let output = Command::new("pip")
-            .args(["list", "--format=json"])
-            .output()
-            .context("Failed to get pip packages")?;
+    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
+        let mut cmd = Command::new("pip");
+        cmd.arg("show");
 
-        parse_pip_output(&String::from_utf8_lossy(&output.stdout))
+        // 添加包名（如果指定）
+        if !packages.is_empty() {
+            cmd.arg(&packages[0]);
+        } else {
+            cmd.arg("--format=json"); // 默认输出格式
+        }
+
+        // 添加其他参数
+        cmd.args(&options.args);
+
+        let output = cmd.output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-}
-
-fn parse_pip_output(output: &str) -> Result<Vec<DependencyInfo>> {
-    #[derive(serde::Deserialize)]
-    struct PipPackage {
-        name: String,
-        version: String,
-    }
-
-    let packages: Vec<PipPackage> = serde_json::from_str(output)?;
-    Ok(packages
-        .into_iter()
-        .map(|pkg| DependencyInfo {
-            name: pkg.name,
-            version: pkg.version,
-            dependencies: Vec::new(),
-        })
-        .collect())
 }
