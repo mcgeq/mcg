@@ -6,13 +6,17 @@ use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum CliCommand {
-    #[command(alias = "a")]
+    /// Add Packages
+    #[command(aliases = ["a"])]
     Add(add::AddArgs),
-    #[command(alias = "r")]
+    /// Remove Packages
+    #[command(aliases = ["r"])]
     Remove(remove::RemoveArgs),
-    #[command(alias = "u")]
+    /// Upgraade Packages
+    #[command(aliases = ["u"])]
     Upgrade(upgrade::UpgradeArgs),
-    #[command(alias = "an")]
+    /// Analyze Depend
+    #[command(aliases = ["an"])]
     Analyze(analyze::AnalyzeArgs),
 }
 
