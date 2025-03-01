@@ -14,5 +14,11 @@ pub struct AddArgs {
 }
 
 impl AddArgs {
-    pub fn execute(&self) -> Result<()> {}
+    pub fn execute(&self) -> Result<()> {
+        let manager = PackageManager::detect()?;
+        let options = PackageOptions {
+            manager_args: self.manager_args.clone(),
+        };
+        manager.add(&self.packages, &options)
+    }
 }
