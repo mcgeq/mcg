@@ -1,5 +1,6 @@
 mod add;
 mod analyze;
+pub mod fs;
 mod remove;
 mod upgrade;
 use clap::Subcommand;
@@ -18,6 +19,9 @@ pub enum CliCommand {
     /// Analyze Depend
     #[command(aliases = ["an"])]
     Analyze(analyze::AnalyzeArgs),
+    /// File System Operations
+    #[command(subcommand)]
+    Fs(fs::FsCommand),
 }
 
 impl CliCommand {
@@ -27,6 +31,7 @@ impl CliCommand {
             Self::Remove(cmd) => cmd.execute(),
             Self::Upgrade(cmd) => cmd.execute(),
             Self::Analyze(cmd) => cmd.execute(),
+            Self::Fs(cmd) => cmd.execute(),
         }
     }
 }
