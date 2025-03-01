@@ -46,6 +46,4 @@ pub trait PackageManager {
         packages: &[String],
         options: &PackageOptions,
     ) -> Result<()>;
-
-    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String>;
 }

@@ -15,10 +15,10 @@ impl PackageManager for Cargo {
         packages: &[String],
         options: &PackageOptions,
     ) -> String {
-        let mut cmd = vec!["cargo".to_string(), command.to_string()];
-        cmd.extend(packages.iter().cloned());
-        cmd.extend(options.args.clone());
-        cmd.join(" ")
+        let mut args = vec!["cargo".to_string(), get_command(command)];
+        args.extend(packages.iter().cloned());
+        args.extend(options.args.clone());
+        args.join(" ")
     }
 
     fn execute_command(
@@ -28,24 +28,20 @@ impl PackageManager for Cargo {
         options: &PackageOptions,
     ) -> Result<()> {
         Command::new("cargo")
-            .arg(command)
+            .arg(get_command(command))
             .args(packages)
             .args(&options.args)
             .status()?;
         Ok(())
     }
+}
 
-    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
-        let mut cmd = Command::new("cargo");
-        cmd.arg("tree");
-
-        if !packages.is_empty() {
-            cmd.arg("--package").arg(&packages[0]);
-        }
-
-        cmd.args(&options.args);
-
-        let output = cmd.output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+fn get_command(cmd: &str) -> String {
+    match cmd {
+        "add" => "add".to_string(),
+        "remove" => "remove".to_string(),
+        "upgrade" => "upgrade".to_string(),
+        "analyze" => "tree".to_string(),
+        _ => cmd.to_string(),
     }
 }

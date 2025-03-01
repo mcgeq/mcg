@@ -15,7 +15,7 @@ impl PackageManager for Poetry {
         packages: &[String],
         options: &PackageOptions,
     ) -> String {
-        let mut cmd = vec!["poetry".to_string(), command.to_string()];
+        let mut cmd = vec!["poetry".to_string(), get_command(command)];
         cmd.extend(packages.iter().cloned());
         cmd.extend(options.args.clone());
         cmd.join(" ")
@@ -28,26 +28,20 @@ impl PackageManager for Poetry {
         options: &PackageOptions,
     ) -> Result<()> {
         Command::new("poetry")
-            .arg(command)
+            .arg(get_command(command))
             .args(packages)
             .args(&options.args)
             .status()?;
         Ok(())
     }
+}
 
-    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
-        let mut cmd = Command::new("poetry");
-        cmd.arg("show");
-
-        // 添加包名（如果指定）
-        if !packages.is_empty() {
-            cmd.arg(&packages[0]);
-        }
-
-        // 添加其他参数
-        cmd.args(&options.args);
-
-        let output = cmd.output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+fn get_command(cmd: &str) -> String {
+    match cmd {
+        "add" => "add".to_string(),
+        "remove" => "remove".to_string(),
+        "upgrade" => "update".to_string(),
+        "analyze" => "show".to_string(),
+        _ => cmd.to_string(),
     }
 }

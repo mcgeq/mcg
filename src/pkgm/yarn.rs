@@ -15,14 +15,7 @@ impl PackageManager for Yarn {
         packages: &[String],
         options: &PackageOptions,
     ) -> String {
-        let cmd = match command {
-            "add" => "add",
-            "remove" => "remove",
-            "upgrade" => "upgrade",
-            "analyze" => "list",
-            _ => command,
-        };
-        let mut args = vec!["yarn".to_string(), cmd.to_string()];
+        let mut args = vec!["yarn".to_string(), get_command(command)];
         args.extend(packages.iter().cloned());
         args.extend(options.args.clone());
         args.join(" ")
@@ -34,34 +27,21 @@ impl PackageManager for Yarn {
         packages: &[String],
         options: &PackageOptions,
     ) -> Result<()> {
-        let cmd = match command {
-            "add" => "add",
-            "remove" => "remove",
-            "upgrade" => "upgrade",
-            "analyze" => "list",
-            _ => command,
-        };
         Command::new("yarn")
-            .arg(cmd)
+            .arg(get_command(command))
             .args(packages)
             .args(&options.args)
             .status()?;
         Ok(())
     }
+}
 
-    fn analyze(&self, packages: &[String], options: &PackageOptions) -> Result<String> {
-        let mut cmd = Command::new("yarn");
-        cmd.arg("list");
-
-        // 添加包名（如果指定）
-        if !packages.is_empty() {
-            cmd.arg(&packages[0]);
-        }
-
-        // 添加其他参数
-        cmd.args(&options.args);
-
-        let output = cmd.output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+fn get_command(cmd: &str) -> String {
+    match cmd {
+        "add" => "add".to_string(),
+        "remove" => "remove".to_string(),
+        "upgrade" => "upgrade".to_string(),
+        "analyze" => "tree".to_string(),
+        _ => cmd.to_string(),
     }
 }

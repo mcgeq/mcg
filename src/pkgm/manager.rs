@@ -15,6 +15,6 @@ pub fn execute_with_prompt(
     manager
         .execute_command(command, packages, options)
         .map(|_| {
-            println!("{} Command completed successfully", "✓".green());
+            println!("{}", "✓ Command completed successfully.".green());
         })
 }
