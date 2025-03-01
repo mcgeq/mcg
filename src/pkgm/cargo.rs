@@ -1,5 +1,5 @@
 use super::types::{DependencyInfo, PackageManager, PackageOptions};
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::process::Command;
 
 pub struct Cargo;

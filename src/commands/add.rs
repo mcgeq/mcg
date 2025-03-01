@@ -1,4 +1,4 @@
-use crate::pkgm::{detect, PackageOptions};
+use crate::pkgm::{PackageOptions, detect};
 use anyhow::Result;
 use clap::Args;
 use colored::Colorize;

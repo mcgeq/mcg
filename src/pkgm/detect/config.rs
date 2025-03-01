@@ -6,7 +6,7 @@ pub const CONFIGURATIONS: &[(ManagerType, &[&str])] = &[
     (ManagerType::Poetry, &["pyproject.toml"]),
     (ManagerType::Pnpm, &["pnpm-lock.yaml"]),
     (ManagerType::Yarn, &["yarn.lock"]),
-    (ManagerType::Npm, &["package-lock.json", "package.json"]),
+    (ManagerType::Npm, &["package-lock.json"]),
     (ManagerType::Pip, &["requirements.txt"]),
 ];
 

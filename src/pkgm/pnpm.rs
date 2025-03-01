@@ -39,7 +39,7 @@ impl PackageManager for Pnpm {
 
     fn analyze(&self) -> Result<Vec<DependencyInfo>> {
         let output = Command::new("pnpm")
-            .args(["list", "--json", "--depth=0"])
+            .args(["list"])
             .output()
             .context("Failed to get pnpm dependencies")?;
 

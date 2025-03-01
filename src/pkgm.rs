@@ -9,4 +9,4 @@ mod types;
 mod yarn;
 
 pub use detect::detect;
-pub use types::{DependencyInfo, PackageManager, PackageOptions};
+pub use types::{DependencyInfo, PackageOptions};
