@@ -5,35 +5,33 @@ use std::process::Command;
 pub struct Poetry;
 
 impl PackageManager for Poetry {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("poetry")
-            .arg("add")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("poetry add failed")?;
-        Ok(())
+    fn name(&self) -> &'static str {
+        "poetry"
     }
 
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("poetry")
-            .arg("remove")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("poetry remove failed")?;
-        Ok(())
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let mut cmd = vec!["poetry".to_string(), command.to_string()];
+        cmd.extend(packages.iter().cloned());
+        cmd.extend(options.args.clone());
+        cmd.join(" ")
     }
 
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("poetry");
-        cmd.arg("update");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("poetry update failed")?;
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
+        Command::new("poetry")
+            .arg(command)
+            .args(packages)
+            .args(&options.args)
+            .status()?;
         Ok(())
     }
 

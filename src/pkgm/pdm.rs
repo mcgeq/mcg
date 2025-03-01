@@ -5,35 +5,47 @@ use std::process::Command;
 pub struct Pdm;
 
 impl PackageManager for Pdm {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("pdm")
-            .arg("add")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("pdm add failed")?;
-        Ok(())
+    fn name(&self) -> &'static str {
+        "pdm"
     }
 
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("pdm")
-            .arg("remove")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("pdm remove failed")?;
-        Ok(())
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let cmd = match command {
+            "add" => "add",
+            "remove" => "remove",
+            "upgrade" => "update",
+            "analyze" => "list",
+            _ => command,
+        };
+        let mut args = vec!["pdm".to_string(), cmd.to_string()];
+        args.extend(packages.iter().cloned());
+        args.extend(options.args.clone());
+        args.join(" ")
     }
 
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("pdm");
-        cmd.arg("update");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("pdm update failed")?;
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
+        let cmd = match command {
+            "add" => "add",
+            "remove" => "remove",
+            "upgrade" => "update",
+            "analyze" => "list",
+            _ => command,
+        };
+        Command::new("pdm")
+            .arg(cmd)
+            .args(packages)
+            .args(&options.args)
+            .status()?;
         Ok(())
     }
 

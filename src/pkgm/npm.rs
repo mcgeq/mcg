@@ -5,35 +5,47 @@ use std::process::Command;
 pub struct Npm;
 
 impl PackageManager for Npm {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("npm")
-            .arg("install")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("Failed to execute npm install")?;
-        Ok(())
+    fn name(&self) -> &'static str {
+        "npm"
     }
 
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("npm")
-            .arg("uninstall")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("npm uninstall failed")?;
-        Ok(())
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let cmd = match command {
+            "add" => "install",
+            "remove" => "uninstall",
+            "upgrade" => "update",
+            "analyze" => "list",
+            _ => command,
+        };
+        let mut args = vec!["npm".to_string(), cmd.to_string()];
+        args.extend(packages.iter().cloned());
+        args.extend(options.args.clone());
+        args.join(" ")
     }
 
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("npm");
-        cmd.arg("update");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("npm update failed")?;
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
+        let cmd = match command {
+            "add" => "install",
+            "remove" => "uninstall",
+            "upgrade" => "update",
+            "analyze" => "list",
+            _ => command,
+        };
+        Command::new("npm")
+            .arg(cmd)
+            .args(packages)
+            .args(&options.args)
+            .status()?;
         Ok(())
     }
 

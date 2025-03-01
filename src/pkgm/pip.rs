@@ -5,36 +5,47 @@ use std::process::Command;
 pub struct Pip;
 
 impl PackageManager for Pip {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("pip")
-            .arg("install")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("pip install failed")?;
-        Ok(())
+    fn name(&self) -> &'static str {
+        "pip"
     }
 
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("pip")
-            .arg("uninstall")
-            .args(packages)
-            .args(&options.args)
-            .arg("-y") // 自动确认
-            .status()
-            .context("pip uninstall failed")?;
-        Ok(())
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let cmd = match command {
+            "add" => "install",
+            "remove" => "uninstall",
+            "upgrade" => "install --upgrade",
+            "analyze" => "list",
+            _ => command,
+        };
+        let mut args = vec!["pip".to_string(), cmd.to_string()];
+        args.extend(packages.iter().cloned());
+        args.extend(options.args.clone());
+        args.join(" ")
     }
 
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("pip");
-        cmd.arg("install").arg("--upgrade");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("pip upgrade failed")?;
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
+        let cmd = match command {
+            "add" => "install",
+            "remove" => "uninstall",
+            "upgrade" => "install --upgrade",
+            "analyze" => "list",
+            _ => command,
+        };
+        Command::new("pip")
+            .arg(cmd)
+            .args(packages)
+            .args(&options.args)
+            .status()?;
         Ok(())
     }
 

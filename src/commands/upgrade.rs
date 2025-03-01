@@ -1,7 +1,6 @@
-use crate::pkgm::{detect, PackageOptions};
+use crate::pkgm::{PackageOptions, detect};
 use anyhow::Result;
 use clap::Args;
-use colored::Colorize;
 
 #[derive(Args)]
 pub struct UpgradeArgs {
@@ -17,8 +16,6 @@ impl UpgradeArgs {
         let manager = detect()?;
         let options = PackageOptions::new(self.manager_args.clone());
 
-        manager.upgrade(&self.packages, &options).map(|_| {
-            println!("{} Successfully upgraded packages", "✓".green());
-        })
+        crate::pkgm::execute_with_prompt(&*manager, "upgrade", &self.packages, &options)
     }
 }

@@ -1,44 +1,42 @@
 use super::types::{DependencyInfo, PackageManager, PackageOptions};
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use std::process::Command;
 
 pub struct Cargo;
 
 impl PackageManager for Cargo {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
+    fn name(&self) -> &'static str {
+        "cargo"
+    }
+
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let mut cmd = vec!["cargo".to_string(), command.to_string()];
+        cmd.extend(packages.iter().cloned());
+        cmd.extend(options.args.clone());
+        cmd.join(" ")
+    }
+
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
         Command::new("cargo")
-            .arg("add")
+            .arg(command)
             .args(packages)
             .args(&options.args)
             .status()?;
         Ok(())
     }
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("cargo")
-            .arg("remove")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("cargo remove failed")?;
-        Ok(())
-    }
-
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("cargo");
-        cmd.arg("update");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("cargo update failed")?;
-        Ok(())
-    }
 
     fn analyze(&self) -> Result<Vec<DependencyInfo>> {
-        let output = Command::new("cargo")
-            .args(["tree", "--depth=1", "--format", "{p}"])
-            .output()?;
+        let output = Command::new("cargo").args(["tree", "--depth=1"]).output()?;
 
         parse_cargo_output(&String::from_utf8_lossy(&output.stdout))
     }

@@ -5,41 +5,53 @@ use std::process::Command;
 pub struct Yarn;
 
 impl PackageManager for Yarn {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("yarn")
-            .arg("add")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("yarn add failed")?;
-        Ok(())
+    fn name(&self) -> &'static str {
+        "yarn"
     }
 
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        Command::new("yarn")
-            .arg("remove")
-            .args(packages)
-            .args(&options.args)
-            .status()
-            .context("yarn remove failed")?;
-        Ok(())
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String {
+        let cmd = match command {
+            "add" => "add",
+            "remove" => "remove",
+            "upgrade" => "upgrade",
+            "analyze" => "list",
+            _ => command,
+        };
+        let mut args = vec!["yarn".to_string(), cmd.to_string()];
+        args.extend(packages.iter().cloned());
+        args.extend(options.args.clone());
+        args.join(" ")
     }
 
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()> {
-        let mut cmd = Command::new("yarn");
-        cmd.arg("upgrade");
-        if !packages.is_empty() {
-            cmd.args(packages);
-        }
-        cmd.args(&options.args)
-            .status()
-            .context("yarn upgrade failed")?;
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()> {
+        let cmd = match command {
+            "add" => "add",
+            "remove" => "remove",
+            "upgrade" => "upgrade",
+            "analyze" => "list",
+            _ => command,
+        };
+        Command::new("yarn")
+            .arg(cmd)
+            .args(packages)
+            .args(&options.args)
+            .status()?;
         Ok(())
     }
 
     fn analyze(&self) -> Result<Vec<DependencyInfo>> {
         let output = Command::new("yarn")
-            .args(["list", "--json", "--depth=0"])
+            .args(["list", "--depth=0"])
             .output()
             .context("Failed to get yarn dependencies")?;
 

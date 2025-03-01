@@ -31,8 +31,21 @@ impl PackageOptions {
 }
 
 pub trait PackageManager {
-    fn add(&self, packages: &[String], options: &PackageOptions) -> Result<()>;
-    fn remove(&self, packages: &[String], options: &PackageOptions) -> Result<()>;
-    fn upgrade(&self, packages: &[String], options: &PackageOptions) -> Result<()>;
+    fn name(&self) -> &'static str;
+
+    fn format_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> String;
+
+    fn execute_command(
+        &self,
+        command: &str,
+        packages: &[String],
+        options: &PackageOptions,
+    ) -> Result<()>;
+
     fn analyze(&self) -> Result<Vec<DependencyInfo>>;
 }

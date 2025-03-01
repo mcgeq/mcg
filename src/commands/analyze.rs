@@ -1,4 +1,4 @@
-use crate::pkgm::{detect, DependencyInfo};
+use crate::pkgm::{DependencyInfo, PackageOptions, detect};
 use anyhow::Result;
 use clap::Args;
 use colored::Colorize;
@@ -9,6 +9,11 @@ pub struct AnalyzeArgs;
 impl AnalyzeArgs {
     pub fn execute(&self) -> Result<()> {
         let manager = detect()?;
+        println!("Using {} package manager", manager.name().cyan());
+
+        let full_command = manager.format_command("analyze", &[], &PackageOptions::new(vec![]));
+        println!("Executing: {}", full_command.yellow());
+
         let dependencies = manager.analyze()?;
 
         println!("{} Dependency Analysis:", "✦".cyan());
