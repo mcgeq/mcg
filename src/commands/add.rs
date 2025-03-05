@@ -1,27 +1,26 @@
-use crate::pkgm::{PackageOptions, detect};
+use crate::{
+    pkgm::{PackageOptions, detect},
+    utils::args_parser::ArgsParser,
+};
 use anyhow::Result;
 use clap::Args;
 
 #[derive(Args)]
 pub struct AddArgs {
-    /// Packages to install
-    #[arg(required = true, num_args = 1..)]
-    pub packages: Vec<String>,
-
     #[arg(
-        last = true,
         allow_hyphen_values = true,
-        allow_negative_numbers = true,
-        value_parser = clap::value_parser!(String),
-        help = "Package manager specific arguments"
+        trailing_var_arg = true,
+        help = "Packages add"
     )]
-    pub manager_args: Vec<String>,
+    pub raw_args: Vec<String>,
 }
 
 impl AddArgs {
     pub fn execute(&self) -> Result<()> {
+        let (packages, manager_args) = ArgsParser::parse(&self.raw_args);
+
         let manager = detect()?;
-        let options = PackageOptions::new(self.manager_args.clone());
-        crate::pkgm::execute_with_prompt(&*manager, "add", &self.packages, &options)
+        let options = PackageOptions::new(manager_args);
+        crate::pkgm::execute_with_prompt(&*manager, "add", &packages, &options)
     }
 }
