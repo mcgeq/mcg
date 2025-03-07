@@ -1,3 +1,4 @@
+mod bun;
 mod cargo;
 mod detect;
 mod manager;

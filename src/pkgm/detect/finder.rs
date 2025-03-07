@@ -1,6 +1,6 @@
 use super::config::CONFIGURATIONS;
 use crate::pkgm::types::{ManagerType, PackageManager};
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
 pub fn detect() -> Result<Box<dyn PackageManager>> {
@@ -22,6 +22,7 @@ pub fn detect() -> Result<Box<dyn PackageManager>> {
             }
             ManagerType::Npm => Ok(Box::new(crate::pkgm::npm::Npm) as Box<dyn PackageManager>),
             ManagerType::Pnpm => Ok(Box::new(crate::pkgm::pnpm::Pnpm) as Box<dyn PackageManager>),
+            ManagerType::Bun => Ok(Box::new(crate::pkgm::bun::Bun) as Box<dyn PackageManager>),
             ManagerType::Yarn => Ok(Box::new(crate::pkgm::yarn::Yarn) as Box<dyn PackageManager>),
             ManagerType::Pip => Ok(Box::new(crate::pkgm::pip::Pip) as Box<dyn PackageManager>),
             ManagerType::Poetry => {
@@ -36,11 +37,12 @@ fn get_priority(manager: ManagerType) -> u8 {
     match manager {
         ManagerType::Cargo => 0,
         ManagerType::Pnpm => 1,
-        ManagerType::Npm => 2,
-        ManagerType::Yarn => 3,
-        ManagerType::Pip => 4,
-        ManagerType::Poetry => 5,
-        ManagerType::Pdm => 6,
+        ManagerType::Bun => 2,
+        ManagerType::Npm => 3,
+        ManagerType::Yarn => 4,
+        ManagerType::Pip => 5,
+        ManagerType::Poetry => 6,
+        ManagerType::Pdm => 7,
     }
 }
 

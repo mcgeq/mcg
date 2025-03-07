@@ -39,6 +39,7 @@ impl PackageManager for Npm {
 fn get_command(cmd: &str) -> String {
     match cmd {
         "add" => "install".to_string(),
+        "install" => "install".to_string(),
         "remove" => "uninstall".to_string(),
         "upgrade" => "update".to_string(),
         "analyze" => "list".to_string(),

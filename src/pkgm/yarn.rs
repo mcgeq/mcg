@@ -39,6 +39,7 @@ impl PackageManager for Yarn {
 fn get_command(cmd: &str) -> String {
     match cmd {
         "add" => "add".to_string(),
+        "install" => "install".to_string(),
         "remove" => "remove".to_string(),
         "upgrade" => "upgrade".to_string(),
         "analyze" => "tree".to_string(),

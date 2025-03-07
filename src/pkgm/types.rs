@@ -6,6 +6,7 @@ pub enum ManagerType {
     Cargo,
     Npm,
     Pnpm,
+    Bun,
     Yarn,
     Pip,
     Pdm,

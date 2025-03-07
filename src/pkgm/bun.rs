@@ -2,11 +2,11 @@ use super::types::{PackageManager, PackageOptions};
 use anyhow::Result;
 use std::process::Command;
 
-pub struct Cargo;
+pub struct Bun;
 
-impl PackageManager for Cargo {
+impl PackageManager for Bun {
     fn name(&self) -> &'static str {
-        "cargo"
+        "bun"
     }
 
     fn format_command(
@@ -15,7 +15,7 @@ impl PackageManager for Cargo {
         packages: &[String],
         options: &PackageOptions,
     ) -> String {
-        let mut args = vec!["cargo".to_string(), get_command(command)];
+        let mut args = vec![self.name().to_string(), get_command(command)];
         args.extend(packages.iter().cloned());
         args.extend(options.args.clone());
         args.join(" ")
@@ -27,7 +27,7 @@ impl PackageManager for Cargo {
         packages: &[String],
         options: &PackageOptions,
     ) -> Result<()> {
-        Command::new("cargo")
+        Command::new(self.name())
             .arg(get_command(command))
             .args(packages)
             .args(&options.args)
@@ -39,10 +39,10 @@ impl PackageManager for Cargo {
 fn get_command(cmd: &str) -> String {
     match cmd {
         "add" => "add".to_string(),
-        "install" => "check".to_string(),
+        "install" => "install".to_string(),
         "remove" => "remove".to_string(),
-        "upgrade" => "upgrade".to_string(),
-        "analyze" => "tree".to_string(),
+        "upgrade" => "update".to_string(),
+        "analyze" => "list".to_string(),
         _ => cmd.to_string(),
     }
 }

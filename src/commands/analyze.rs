@@ -17,8 +17,6 @@ impl AnalyzeArgs {
         let (packages, manager_args) = ArgsParser::parse(&self.raw_args);
         let manager = detect()?;
 
-        println!("Using {} package manager", manager.name());
-
         let options = PackageOptions::new(manager_args);
         crate::pkgm::execute_with_prompt(&*manager, "analyze", &packages, &options)
     }

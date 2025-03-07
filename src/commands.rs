@@ -1,12 +1,16 @@
 mod add;
 mod analyze;
 pub mod fs;
+mod install;
 mod remove;
 mod upgrade;
 use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum CliCommand {
+    /// Install all Packages
+    #[command(aliases = ["i"])]
+    Install(install::InstallArgs),
     /// Add Packages
     #[command(aliases = ["a"])]
     Add(add::AddArgs),
@@ -28,6 +32,7 @@ impl CliCommand {
     pub fn execute(&self) -> anyhow::Result<()> {
         match self {
             Self::Add(cmd) => cmd.execute(),
+            Self::Install(cmd) => cmd.execute(),
             Self::Remove(cmd) => cmd.execute(),
             Self::Upgrade(cmd) => cmd.execute(),
             Self::Analyze(cmd) => cmd.execute(),

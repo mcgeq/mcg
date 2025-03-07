@@ -39,6 +39,7 @@ impl PackageManager for Pip {
 fn get_command(cmd: &str) -> String {
     match cmd {
         "add" => "install".to_string(),
+        "install" => "install".to_string(),
         "remove" => "uninstall".to_string(),
         "upgrade" => "install --upgrade".to_string(),
         "analyze" => "list".to_string(),
