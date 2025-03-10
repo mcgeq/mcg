@@ -24,7 +24,7 @@ pub enum CliCommand {
     #[command(aliases = ["an"])]
     Analyze(analyze::AnalyzeArgs),
     /// File System Operations
-    #[command(subcommand)]
+    #[command(subcommand, aliases = ["f", "d"])]
     Fs(fs::FsCommand),
 }
 

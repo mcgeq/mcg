@@ -35,6 +35,7 @@ impl super::FsCommandExecute for RemoveArgs {
         } else if path.is_file() {
             fs::remove_file(path)
                 .with_context(|| format!("Failed to remove file: {}", self.path))?;
+            println!("{}: {}", "Removed directory".green(), self.path.blue());
         } else {
             anyhow::bail!("{}: {}", "Path does not exist".red(), self.path.blue());
         }
