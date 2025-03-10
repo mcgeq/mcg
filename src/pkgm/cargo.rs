@@ -41,7 +41,7 @@ fn get_command(cmd: &str) -> String {
         "add" => "add".to_string(),
         "install" => "check".to_string(),
         "remove" => "remove".to_string(),
-        "upgrade" => "upgrade".to_string(),
+        "upgrade" => "update".to_string(),
         "analyze" => "tree".to_string(),
         _ => cmd.to_string(),
     }
