@@ -8,7 +8,7 @@ use commands::CliCommand;
 
 #[derive(Parser)]
 #[command(name = "mg")]
-#[command(version, about = "Multi-package manager CLI")]
+#[command(version, about)]
 struct Cli {
     #[command(subcommand)]
     command: CliCommand,

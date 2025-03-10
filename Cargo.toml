@@ -2,6 +2,10 @@
 name = "mg"
 version = "0.1.0"
 edition = "2024"
+authors = ["mcgeq <mcgeq@outlook.com>"]
+readme = "README.md"
+homepage = "https://mcgeq.com"
+description = "Multi-package manager CLI."
 
 [dependencies]
 anyhow = "1.0.96"
