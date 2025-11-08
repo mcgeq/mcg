@@ -3,6 +3,7 @@ mod macros;
 
 mod bun;
 mod cargo;
+mod config;
 mod detect;
 mod helpers;
 mod manager;

@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use clap::Args;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct AnalyzeArgs {
     /// Package to analyze (optional)
     #[arg(allow_hyphen_values = true, trailing_var_arg = true)]

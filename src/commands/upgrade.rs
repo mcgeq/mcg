@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use clap::Args;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct UpgradeArgs {
     #[arg(
         allow_hyphen_values = true,

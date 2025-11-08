@@ -5,7 +5,7 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct CreateArgs {
     /// Path to create
     #[arg(help = "The path to create (file or directory)")]

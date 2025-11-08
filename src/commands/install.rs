@@ -2,7 +2,7 @@ use crate::pkgm::{PackageOptions, detect};
 use anyhow::Result;
 use clap::Args;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct InstallArgs {}
 
 impl InstallArgs {

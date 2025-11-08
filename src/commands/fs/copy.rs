@@ -5,7 +5,7 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct CopyArgs {
     /// Source path
     #[arg(help = "The source path to copy from")]

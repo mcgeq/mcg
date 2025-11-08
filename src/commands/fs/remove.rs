@@ -5,7 +5,7 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Path to remove
     #[arg(help = "The path to remove (file or directory)")]

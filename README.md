@@ -11,6 +11,9 @@ By automatically detecting project types, **mg** intelligently invokes the corre
 - **Unified command interface**: Provides unified commands such as **add**, **remove**, **upgrade**, and **analyze**.
 - **Dynamic parameter support**: Allows passing arbitrary package manager parameters and supports native command formats.
 - **Colored output**: Uses colored terminal output to enhance readability.
+- **Performance optimization**: Caches detection results to avoid repeated file system queries.
+- **Structured logging**: Built-in logging support for debugging and monitoring.
+- **Configuration file support**: Customize behavior with `.mg.toml` configuration files.
 
 ## Installation
 
@@ -45,7 +48,21 @@ mg upgrade <package> [options]
 
 # Analyze dependencies
 mg analyze [package] [options]
+
+# Install all packages
+mg install [options]
+
+# File system operations
+mg fs create <path>
+mg fs remove <path>
+mg fs copy <src> <dest>
+mg fs move <src> <dest>
 ```
+
+### Global Options
+
+- `-v, --verbose`: Enable verbose logging
+- `--log-level <LEVEL>`: Set log level (trace, debug, info, warn, error)
 
 ### Examples
 
@@ -124,6 +141,50 @@ mg add pytest -G dev --extras coverage
 # Equivalent to: poetry add pytest --group dev --extras coverage
 ```
 
+## Configuration File
+
+mg supports configuration files (`.mg.toml`) to customize behavior:
+
+```toml
+# Override package manager detection
+manager = "npm"
+
+# Custom command mappings (optional)
+[commands]
+add = "install"
+remove = "uninstall"
+
+# Default arguments (optional)
+[defaults]
+add_args = ["-D"]
+```
+
+Place `.mg.toml` in your project root to override automatic detection or customize command behavior.
+
+## Logging
+
+mg uses the `tracing` framework for structured logging, providing rich contextual information:
+
+```bash
+# Enable verbose logging
+mg --verbose add serde
+
+# Set custom log level
+mg --log-level debug add serde
+
+# Use environment variable (supports tracing filters)
+RUST_LOG=mg=debug mg add serde
+RUST_LOG=mg::detect=trace mg add serde  # Module-specific logging
+```
+
+Available log levels: `trace`, `debug`, `info`, `warn`, `error`
+
+**Benefits of tracing**:
+- **Structured fields**: Logs include key-value pairs for better filtering and analysis
+- **Contextual information**: Automatic context propagation across function calls
+- **Performance**: Zero-cost abstractions when logging is disabled
+- **Flexibility**: Support for multiple subscribers and output formats
+
 ## Colored Output
 
 mg uses colored terminal output to enhance readability:
@@ -137,7 +198,7 @@ mg uses colored terminal output to enhance readability:
 $ mg add serde
 Using cargo package manager
 Executing: cargo add serde
-✓ Packages added successfully
+✓ Command completed successfully
 ```
 
 ## License

@@ -30,6 +30,11 @@ pub fn execute_command(
 
     let full_command = format_command_string(manager_name, command_args.clone(), packages, options);
 
+    tracing::debug!(
+        manager = %manager_name,
+        command = %full_command,
+        "Executing command"
+    );
     let status = cmd.status().with_context(|| {
         format!(
             "Failed to execute {} command. Make sure {} is installed and available in PATH",
@@ -39,6 +44,12 @@ pub fn execute_command(
 
     if !status.success() {
         let exit_code = status.code().unwrap_or(-1);
+        tracing::error!(
+            manager = %manager_name,
+            exit_code = exit_code,
+            command = %full_command,
+            "Command failed with non-zero exit code"
+        );
         anyhow::bail!(
             "{} command failed with exit code: {}. Command: {}",
             manager_name,
@@ -46,6 +57,12 @@ pub fn execute_command(
             full_command
         );
     }
+    
+    tracing::debug!(
+        manager = %manager_name,
+        command = %full_command,
+        "Command executed successfully"
+    );
 
     Ok(())
 }

@@ -4,7 +4,7 @@ use clap::Args;
 use colored::Colorize;
 use std::fs;
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct MoveArgs {
     /// Source path
     #[arg(help = "The source path to move")]

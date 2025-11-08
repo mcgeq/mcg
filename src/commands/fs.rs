@@ -10,7 +10,7 @@ pub trait FsCommandExecute {
     fn execute(&self) -> Result<()>;
 }
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum FsCommand {
     /// Create Directory or File
     #[command(aliases = ["c", "touch"], about = "Create a directory or file")]

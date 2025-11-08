@@ -1,20 +1,77 @@
-use super::config::{CONFIGURATIONS, DetectionConfig};
+use super::cache::{get_cached_manager, set_cached_manager};
+use super::detection_config::{CONFIGURATIONS, DetectionConfig};
+use crate::pkgm::config::MgConfig;
 use crate::pkgm::types::{ManagerType, PackageManager};
 use anyhow::{Result, bail};
 use std::path::{Path, PathBuf};
 
 pub fn detect() -> Result<Box<dyn PackageManager>> {
+    // Check for configuration file first
+    if let Ok(Some(config)) = MgConfig::find_and_load() {
+        if let Some(manager_name) = &config.manager {
+            tracing::info!(manager = %manager_name, "Using manager from config");
+            if let Ok(manager_type) = parse_manager_type(manager_name) {
+                set_cached_manager(manager_type.clone());
+                return create_manager(&manager_type);
+            } else {
+                tracing::warn!(manager = %manager_name, "Invalid manager name in config");
+            }
+        }
+    }
+
+    // Try to get cached result
+    if let Some(cached_type) = get_cached_manager() {
+        tracing::debug!(manager = ?cached_type, "Using cached package manager");
+        return create_manager(&cached_type);
+    }
+
+    tracing::debug!("Detecting package manager from file system");
     let mut candidates: Vec<&DetectionConfig> = CONFIGURATIONS
         .iter()
-        .filter(|config| check_files_exist(config.identifier_files))
+        .filter(|config| {
+            let exists = check_files_exist(config.identifier_files);
+            if exists {
+                tracing::debug!(
+                    manager = ?config.manager_type,
+                    files = ?config.identifier_files,
+                    "Found candidate package manager"
+                );
+            }
+            exists
+        })
         .collect();
 
     candidates.sort_by_key(|config| config.priority);
 
-    candidates
+    let result = candidates
         .first()
-        .map(|config| create_manager(&config.manager_type))
-        .unwrap_or_else(|| bail!("No supported package manager detected"))
+        .map(|config| {
+            let manager_type = &config.manager_type;
+            // Cache the result
+            set_cached_manager(manager_type.clone());
+            tracing::info!(manager = ?manager_type, "Detected package manager");
+            create_manager(manager_type)
+        })
+        .unwrap_or_else(|| {
+            tracing::warn!("No supported package manager detected");
+            bail!("No supported package manager detected")
+        });
+
+    result
+}
+
+fn parse_manager_type(name: &str) -> Result<ManagerType> {
+    match name.to_lowercase().as_str() {
+        "cargo" => Ok(ManagerType::Cargo),
+        "npm" => Ok(ManagerType::Npm),
+        "pnpm" => Ok(ManagerType::Pnpm),
+        "bun" => Ok(ManagerType::Bun),
+        "yarn" => Ok(ManagerType::Yarn),
+        "pip" => Ok(ManagerType::Pip),
+        "poetry" => Ok(ManagerType::Poetry),
+        "pdm" => Ok(ManagerType::Pdm),
+        _ => bail!("Unknown package manager: {}", name),
+    }
 }
 
 fn create_manager(manager_type: &ManagerType) -> Result<Box<dyn PackageManager>> {

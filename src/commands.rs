@@ -6,7 +6,7 @@ mod remove;
 mod upgrade;
 use clap::Subcommand;
 
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum CliCommand {
     /// Install all Packages
     #[command(aliases = ["i"])]
