@@ -1,13 +1,17 @@
+#[macro_use]
+mod macros;
+
 mod bun;
 mod cargo;
 mod detect;
+mod helpers;
 mod manager;
 mod npm;
 mod pdm;
 mod pip;
 mod pnpm;
 mod poetry;
-mod types;
+pub mod types;
 mod yarn;
 
 pub use detect::detect;

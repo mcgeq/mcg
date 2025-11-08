@@ -1,48 +1,14 @@
-use super::types::{PackageManager, PackageOptions};
-use anyhow::Result;
-use std::process::Command;
-
 pub struct Npm;
 
-impl PackageManager for Npm {
-    fn name(&self) -> &'static str {
-        "npm"
-    }
-
-    fn format_command(
-        &self,
-        command: &str,
-        packages: &[String],
-        options: &PackageOptions,
-    ) -> String {
-        let mut args = vec!["npm".to_string(), get_command(command)];
-        args.extend(packages.iter().cloned());
-        args.extend(options.args.clone());
-        args.join(" ")
-    }
-
-    fn execute_command(
-        &self,
-        command: &str,
-        packages: &[String],
-        options: &PackageOptions,
-    ) -> Result<()> {
-        Command::new("npm")
-            .arg(get_command(command))
-            .args(packages)
-            .args(&options.args)
-            .status()?;
-        Ok(())
-    }
-}
-
-fn get_command(cmd: &str) -> String {
+fn get_command_args(cmd: &str) -> Vec<String> {
     match cmd {
-        "add" => "install".to_string(),
-        "install" => "install".to_string(),
-        "remove" => "uninstall".to_string(),
-        "upgrade" => "update".to_string(),
-        "analyze" => "list".to_string(),
-        _ => cmd.to_string(),
+        "add" => vec!["install".to_string()],
+        "install" => vec!["install".to_string()],
+        "remove" => vec!["uninstall".to_string()],
+        "upgrade" => vec!["update".to_string()],
+        "analyze" => vec!["list".to_string()],
+        _ => vec![cmd.to_string()],
     }
 }
+
+impl_package_manager!(Npm, "npm", get_command_args);

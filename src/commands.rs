@@ -17,7 +17,7 @@ pub enum CliCommand {
     /// Remove Packages
     #[command(aliases = ["r"])]
     Remove(remove::RemoveArgs),
-    /// Upgraade Packages
+    /// Upgrade Packages
     #[command(aliases = ["u"])]
     Upgrade(upgrade::UpgradeArgs),
     /// Analyze Depend
