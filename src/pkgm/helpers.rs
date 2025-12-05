@@ -1,5 +1,6 @@
 use super::types::PackageOptions;
-use anyhow::{Context, Result};
+use crate::utils::error::{CommandFailedSnafu, ManagerNotInstalledSnafu, Result};
+use snafu::ResultExt;
 use std::process::Command;
 
 /// Execute a package manager command with improved error handling
@@ -22,6 +23,7 @@ pub fn execute_command(
     command_args: Vec<String>,
     packages: &[String],
     options: &PackageOptions,
+    dry_run: bool,
 ) -> Result<()> {
     let mut cmd = Command::new(manager_name);
     cmd.args(&command_args);
@@ -33,13 +35,18 @@ pub fn execute_command(
     tracing::debug!(
         manager = %manager_name,
         command = %full_command,
+        dry_run = dry_run,
         "Executing command"
     );
-    let status = cmd.status().with_context(|| {
-        format!(
-            "Failed to execute {} command. Make sure {} is installed and available in PATH",
-            manager_name, manager_name
-        )
+
+    // Dry run mode - just show what would be executed
+    if dry_run {
+        tracing::info!("Dry run mode: would execute: {}", full_command);
+        return Ok(());
+    }
+
+    let status = cmd.status().context(ManagerNotInstalledSnafu {
+        manager: manager_name.to_string(),
     })?;
 
     if !status.success() {
@@ -50,12 +57,11 @@ pub fn execute_command(
             command = %full_command,
             "Command failed with non-zero exit code"
         );
-        anyhow::bail!(
-            "{} command failed with exit code: {}. Command: {}",
-            manager_name,
-            exit_code,
-            full_command
-        );
+        return CommandFailedSnafu {
+            command: full_command,
+            code: exit_code,
+        }
+        .fail();
     }
     
     tracing::debug!(

@@ -1,15 +1,18 @@
-use anyhow::Context;
 use colored::Colorize;
+use std::time::Instant;
 
 use super::{PackageOptions, types::PackageManager};
+use crate::utils::error::Result;
 
 pub fn execute_with_prompt(
     manager: &dyn PackageManager,
     command: &str,
     packages: &[String],
     options: &PackageOptions,
-) -> anyhow::Result<()> {
+) -> Result<()> {
+    let start = Instant::now();
     let manager_name = manager.name();
+    
     tracing::info!(manager = %manager_name, "Using package manager");
     println!("Using {} package manager.", manager_name.cyan());
 
@@ -23,16 +26,22 @@ pub fn execute_with_prompt(
     );
     println!("Executing: {}", full_command.yellow());
     
-    manager
-        .execute_command(command, packages, options)
-        .with_context(|| {
-            format!(
-                "Failed to execute '{}' command with {} package manager",
-                command, manager_name
-            )
-        })?;
+    manager.execute_command(command, packages, options)?;
     
-    tracing::info!(manager = %manager_name, command = %command, "Command completed successfully");
+    let duration = start.elapsed();
+    tracing::info!(
+        manager = %manager_name,
+        command = %command,
+        duration_ms = duration.as_millis(),
+        "Command completed successfully"
+    );
+    
     println!("{}", "✓ Command completed successfully.".green());
+    
+    // Show execution time for longer commands
+    if duration.as_secs() > 3 {
+        println!("⏱️  Completed in {:.2}s", duration.as_secs_f64());
+    }
+    
     Ok(())
 }

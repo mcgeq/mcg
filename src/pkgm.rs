@@ -12,6 +12,7 @@ mod pdm;
 mod pip;
 mod pnpm;
 mod poetry;
+mod registry;
 pub mod types;
 mod yarn;
 

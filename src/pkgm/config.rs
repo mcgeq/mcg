@@ -1,5 +1,7 @@
-use anyhow::{Context, Result};
+use crate::utils::error::{ConfigParseFailedSnafu, ConfigReadFailedSnafu, CurrentDirFailedSnafu, Result};
 use serde::{Deserialize, Serialize};
+use snafu::ResultExt;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -17,6 +19,10 @@ pub struct MgConfig {
     /// Default options for commands
     #[serde(skip_serializing_if = "Option::is_none")]
     pub defaults: Option<DefaultOptions>,
+    
+    /// Command aliases
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aliases: Option<HashMap<String, String>>,
 }
 
 /// Custom command mappings
@@ -58,20 +64,22 @@ impl MgConfig {
             return Ok(None);
         }
 
-        let content = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
+        let path_buf = path.to_path_buf();
+        let content = fs::read_to_string(path).context(ConfigReadFailedSnafu {
+            path: path_buf.clone(),
+        })?;
 
-        let config: MgConfig = toml::from_str(&content)
-            .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+        let config: MgConfig = toml::from_str(&content).context(ConfigParseFailedSnafu {
+            path: path_buf.clone(),
+        })?;
 
-        tracing::debug!(config_path = %path.display(), "Loaded configuration from file");
+        tracing::debug!(config_path = %path_buf.display(), "Loaded configuration from file");
         Ok(Some(config))
     }
 
     /// Find and load configuration file from current directory or parent directories
     pub fn find_and_load() -> Result<Option<Self>> {
-        let mut current_dir = std::env::current_dir()
-            .context("Failed to get current directory")?;
+        let mut current_dir = std::env::current_dir().context(CurrentDirFailedSnafu)?;
 
         loop {
             let config_path = current_dir.join(".mg.toml");
@@ -85,6 +93,60 @@ impl MgConfig {
         }
 
         Ok(None)
+    }
+    
+    /// Load global configuration from user's config directory
+    #[allow(dead_code)]
+    pub fn load_global_config() -> Result<Option<Self>> {
+        if let Some(config_dir) = dirs::config_dir() {
+            let config_path = config_dir.join("mg").join("config.toml");
+            Self::load_from_file(config_path)
+        } else {
+            Ok(None)
+        }
+    }
+    
+    /// Load and merge configurations (global + project)
+    #[allow(dead_code)]
+    pub fn load_merged() -> Result<Self> {
+        let global = Self::load_global_config()?.unwrap_or_default();
+        let project = Self::find_and_load()?.unwrap_or_default();
+        
+        let mut merged = global;
+        merged.merge(&project);
+        
+        Ok(merged)
+    }
+    
+    /// Merge another config into this one (other takes precedence)
+    #[allow(dead_code)]
+    pub fn merge(&mut self, other: &Self) {
+        if other.manager.is_some() {
+            self.manager = other.manager.clone();
+        }
+        if other.commands.is_some() {
+            self.commands = other.commands.clone();
+        }
+        if other.defaults.is_some() {
+            self.defaults = other.defaults.clone();
+        }
+        if let Some(other_aliases) = &other.aliases {
+            if let Some(self_aliases) = &mut self.aliases {
+                self_aliases.extend(other_aliases.clone());
+            } else {
+                self.aliases = Some(other_aliases.clone());
+            }
+        }
+    }
+    
+    /// Resolve a command alias
+    #[allow(dead_code)]
+    pub fn resolve_alias(&self, command: &str) -> String {
+        self.aliases
+            .as_ref()
+            .and_then(|a| a.get(command))
+            .cloned()
+            .unwrap_or_else(|| command.to_string())
     }
 }
 

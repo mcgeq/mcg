@@ -36,12 +36,14 @@ macro_rules! impl_package_manager {
                 command: &str,
                 packages: &[String],
                 options: &$crate::pkgm::types::PackageOptions,
-            ) -> anyhow::Result<()> {
+            ) -> $crate::utils::error::Result<()> {
+                // TODO: Pass dry_run from global context
                 $crate::pkgm::helpers::execute_command(
                     $manager_name,
                     $get_command_fn(command),
                     packages,
                     options,
+                    false, // dry_run
                 )
             }
         }

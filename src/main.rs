@@ -2,11 +2,11 @@ mod commands;
 mod pkgm;
 mod utils;
 
-use anyhow::Result;
 use clap::Parser;
 use commands::CliCommand;
 use tracing::{debug, trace};
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+use utils::error::Result;
 
 #[derive(Parser)]
 #[command(name = "mg")]
@@ -22,6 +22,10 @@ struct Cli {
     /// Set log level (trace, debug, info, warn, error)
     #[arg(long, global = true, default_value = "warn")]
     log_level: String,
+    
+    /// Dry run mode (show what would be executed without running)
+    #[arg(long, global = true)]
+    dry_run: bool,
 }
 
 fn init_tracing(verbose: bool, log_level: &str) {

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::utils::error::Result;
 
 /// Package manager type enumeration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -2,7 +2,7 @@ use super::cache::{get_cached_manager, set_cached_manager};
 use super::detection_config::{CONFIGURATIONS, DetectionConfig};
 use crate::pkgm::config::MgConfig;
 use crate::pkgm::types::{ManagerType, PackageManager};
-use anyhow::{Result, bail};
+use crate::utils::error::{ManagerNotDetectedSnafu, UnsupportedManagerSnafu, Result};
 use std::path::{Path, PathBuf};
 
 pub fn detect() -> Result<Box<dyn PackageManager>> {
@@ -54,7 +54,7 @@ pub fn detect() -> Result<Box<dyn PackageManager>> {
         })
         .unwrap_or_else(|| {
             tracing::warn!("No supported package manager detected");
-            bail!("No supported package manager detected")
+            ManagerNotDetectedSnafu.fail()
         });
 
     result
@@ -70,21 +70,14 @@ fn parse_manager_type(name: &str) -> Result<ManagerType> {
         "pip" => Ok(ManagerType::Pip),
         "poetry" => Ok(ManagerType::Poetry),
         "pdm" => Ok(ManagerType::Pdm),
-        _ => bail!("Unknown package manager: {}", name),
+        _ => UnsupportedManagerSnafu {
+            name: name.to_string(),
+        }.fail(),
     }
 }
 
 fn create_manager(manager_type: &ManagerType) -> Result<Box<dyn PackageManager>> {
-    match manager_type {
-        ManagerType::Cargo => Ok(Box::new(crate::pkgm::cargo::Cargo) as Box<dyn PackageManager>),
-        ManagerType::Npm => Ok(Box::new(crate::pkgm::npm::Npm) as Box<dyn PackageManager>),
-        ManagerType::Pnpm => Ok(Box::new(crate::pkgm::pnpm::Pnpm) as Box<dyn PackageManager>),
-        ManagerType::Bun => Ok(Box::new(crate::pkgm::bun::Bun) as Box<dyn PackageManager>),
-        ManagerType::Yarn => Ok(Box::new(crate::pkgm::yarn::Yarn) as Box<dyn PackageManager>),
-        ManagerType::Pip => Ok(Box::new(crate::pkgm::pip::Pip) as Box<dyn PackageManager>),
-        ManagerType::Poetry => Ok(Box::new(crate::pkgm::poetry::Poetry) as Box<dyn PackageManager>),
-        ManagerType::Pdm => Ok(Box::new(crate::pkgm::pdm::Pdm) as Box<dyn PackageManager>),
-    }
+    crate::pkgm::registry::create_manager(manager_type)
 }
 
 fn check_files_exist(files: &[&str]) -> bool {

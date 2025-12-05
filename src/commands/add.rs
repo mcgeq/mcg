@@ -1,8 +1,5 @@
-use crate::{
-    pkgm::{PackageOptions, detect},
-    utils::args_parser::ArgsParser,
-};
-use anyhow::Result;
+use crate::commands::common::PackageCommand;
+use crate::utils::error::Result;
 use clap::Args;
 
 #[derive(Debug, Args)]
@@ -10,17 +7,23 @@ pub struct AddArgs {
     #[arg(
         allow_hyphen_values = true,
         trailing_var_arg = true,
-        help = "Packages add"
+        help = "Packages to add"
     )]
     pub raw_args: Vec<String>,
 }
 
+impl PackageCommand for AddArgs {
+    fn command_name(&self) -> &'static str {
+        "add"
+    }
+
+    fn raw_args(&self) -> &[String] {
+        &self.raw_args
+    }
+}
+
 impl AddArgs {
     pub fn execute(&self) -> Result<()> {
-        let (packages, manager_args) = ArgsParser::parse(&self.raw_args);
-
-        let manager = detect()?;
-        let options = PackageOptions::new(manager_args);
-        crate::pkgm::execute_with_prompt(&*manager, "add", &packages, &options)
+        PackageCommand::execute(self)
     }
 }

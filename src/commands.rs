@@ -1,5 +1,6 @@
 mod add;
 mod analyze;
+mod common;
 pub mod fs;
 mod install;
 mod remove;
@@ -29,7 +30,7 @@ pub enum CliCommand {
 }
 
 impl CliCommand {
-    pub fn execute(&self) -> anyhow::Result<()> {
+    pub fn execute(&self) -> crate::utils::error::Result<()> {
         match self {
             Self::Add(cmd) => cmd.execute(),
             Self::Install(cmd) => cmd.execute(),

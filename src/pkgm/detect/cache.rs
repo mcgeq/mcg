@@ -77,6 +77,7 @@ mod tests {
 
     #[test]
     fn test_cache_set_and_get() {
+        clear_cache(); // Clear cache to avoid test interference
         let temp_dir = TempDir::new().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
         
@@ -87,6 +88,7 @@ mod tests {
 
     #[test]
     fn test_cache_subdirectory() {
+        clear_cache(); // Clear cache to avoid test interference
         let temp_dir = TempDir::new().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
         
@@ -102,6 +104,7 @@ mod tests {
 
     #[test]
     fn test_cache_clear() {
+        clear_cache(); // Clear cache to avoid test interference
         let temp_dir = TempDir::new().unwrap();
         std::env::set_current_dir(temp_dir.path()).unwrap();
         
