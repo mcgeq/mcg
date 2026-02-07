@@ -1,4 +1,5 @@
 /target
+/zig-out/
+/.zig-cache/
 nul
-src-zig/.zig-cache/
-src-zig/zig-out/
+
