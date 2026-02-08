@@ -1,8 +1,34 @@
+/// File system command handlers.
+///
+/// This module parses and dispatches file system subcommands to the appropriate
+/// handler functions. Each handler supports multiple aliases for convenience.
+///
+/// Supported Commands and Aliases:
+///   | Command   | Aliases        | Description                    |
+///   |-----------|----------------|--------------------------------|
+///   | create    | c, touch       | Create file or directory       |
+///   | remove    | r, rm          | Remove file or directory       |
+///   | copy      | cp, y          | Copy file or directory         |
+///   | move      | mv, m          | Move/rename file or directory  |
+///   | list      | ls             | List directory contents        |
+///   | exists    | test           | Check if path exists           |
+///   | read      | cat            | Read and display file contents |
+///   | write     | echo           | Write content to a file        |
 const std = @import("std");
 const fs = @import("../fs.zig");
 
 const Self = @This();
 
+/// Dispatches a file system subcommand to the appropriate handler.
+///
+/// Parameters:
+///   - cmd: The subcommand string (matched against known commands and aliases)
+///   - args: Argument slice for the subcommand
+///   - dry_run: If true, preview operations without executing
+///
+/// Behavior:
+///   Matches cmd against all known commands (case-sensitive exact match).
+///   If no match is found, prints an error message.
 pub fn handleCommand(cmd: []const u8, args: []const [:0]u8, dry_run: bool) !void {
     if (std.mem.eql(u8, cmd, "create") or std.mem.eql(u8, cmd, "c") or std.mem.eql(u8, cmd, "touch")) {
         try handleCreate(args, dry_run);
@@ -25,6 +51,21 @@ pub fn handleCommand(cmd: []const u8, args: []const [:0]u8, dry_run: bool) !void
     }
 }
 
+/// Handles the "create" subcommand for creating files or directories.
+///
+/// Usage: mg fs create <path> [--dir] [--recursive|-r]
+///
+/// Parameters:
+///   - args: Arguments slice containing at least one path
+///   - dry_run: If true, preview without executing
+///
+/// Options:
+///   --dir: Force creation as a directory
+///   --recursive, -r: Create parent directories as needed
+///
+/// Note:
+///   Automatically detects directory creation if path ends with "/".
+///   Multiple paths can be specified to create multiple items.
 fn handleCreate(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
         std.debug.print("Usage: mg fs create <path> [--dir] [--recursive|-r]\n", .{});
@@ -48,6 +89,16 @@ fn handleCreate(args: []const [:0]u8, dry_run: bool) !void {
     }
 }
 
+/// Handles the "remove" subcommand for deleting files or directories.
+///
+/// Usage: mg fs remove <path> [--recursive|-r]
+///
+/// Parameters:
+///   - args: Arguments slice containing at least one path
+///   - dry_run: If true, preview without executing
+///
+/// Options:
+///   --recursive, -r: Remove directories and their contents recursively
 fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
         std.debug.print("Usage: mg fs remove <path> [--recursive|-r]\n", .{});
@@ -65,6 +116,16 @@ fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
     }
 }
 
+/// Handles the "copy" subcommand for copying files or directories.
+///
+/// Usage: mg fs copy <src> <dst> [--recursive|-r]
+///
+/// Parameters:
+///   - args: Arguments slice with source and destination paths
+///   - dry_run: If true, preview without executing
+///
+/// Note:
+///   Requires exactly 2 arguments: source and destination.
 fn handleCopy(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
         std.debug.print("Usage: mg fs copy <src> <dst> [--recursive|-r]\n", .{});
@@ -75,6 +136,13 @@ fn handleCopy(args: []const [:0]u8, dry_run: bool) !void {
     fs.fsCopyExtended(src, dst, true, dry_run) catch {};
 }
 
+/// Handles the "move" subcommand for moving or renaming files/directories.
+///
+/// Usage: mg fs move <src> <dst>
+///
+/// Parameters:
+///   - args: Arguments slice with source and destination paths
+///   - dry_run: If true, preview without executing
 fn handleMove(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
         std.debug.print("Usage: mg fs move <src> <dst>\n", .{});
@@ -83,11 +151,28 @@ fn handleMove(args: []const [:0]u8, dry_run: bool) !void {
     fs.fsMove(args[0], args[1], dry_run) catch {};
 }
 
+/// Handles the "list" subcommand for listing directory contents.
+///
+/// Usage: mg fs list [path]
+///
+/// Parameters:
+///   - args: Optional path argument (defaults to ".")
+///   - dry_run: If true, preview without executing
+///
+/// Output:
+///   Lists files and directories. Directories are suffixed with "/".
 fn handleList(args: []const [:0]u8, dry_run: bool) !void {
     const path = if (args.len > 0) args[0] else ".";
     fs.fsList(path, dry_run) catch {};
 }
 
+/// Handles the "exists" subcommand for checking path existence.
+///
+/// Usage: mg fs exists <path>
+///
+/// Parameters:
+///   - args: Arguments slice containing at least one path
+///   - dry_run: If true, preview without executing
 fn handleExists(args: []const [:0]u8, dry_run: bool) void {
     if (args.len < 1) {
         std.debug.print("Usage: mg fs exists <path>\n", .{});
@@ -96,6 +181,13 @@ fn handleExists(args: []const [:0]u8, dry_run: bool) void {
     fs.fsExists(args[0], dry_run);
 }
 
+/// Handles the "read" subcommand for displaying file contents.
+///
+/// Usage: mg fs read <path>
+///
+/// Parameters:
+///   - args: Arguments slice containing the file path
+///   - dry_run: If true, preview without executing
 fn handleRead(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
         std.debug.print("Usage: mg fs read <path>\n", .{});
@@ -104,6 +196,16 @@ fn handleRead(args: []const [:0]u8, dry_run: bool) !void {
     fs.fsRead(args[0], dry_run) catch {};
 }
 
+/// Handles the "write" subcommand for creating or overwriting files.
+///
+/// Usage: mg fs write <path> <content>
+///
+/// Parameters:
+///   - args: Arguments slice with path and content
+///   - dry_run: If true, preview without executing
+///
+/// Note:
+///   Requires exactly 2 arguments. Content is written verbatim.
 fn handleWrite(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
         std.debug.print("Usage: mg fs write <path> <content>\n", .{});
