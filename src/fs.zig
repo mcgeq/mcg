@@ -5,6 +5,75 @@
 /// actually executing it. The module handles file creation, deletion, copying,
 /// moving, and reading/writing operations.
 const std = @import("std");
+const logger = @import("logger.zig");
+
+fn matchesWildcard(filename: []const u8, pattern: []const u8) bool {
+    if (pattern.len == 0) return filename.len == 0;
+    if (pattern.len == 1) {
+        return pattern[0] == '*' or (filename.len == 1 and (pattern[0] == filename[0] or pattern[0] == '?'));
+    }
+
+    var i: usize = 0;
+    var j: usize = 0;
+    var last_star: ?usize = null;
+
+    while (i < filename.len) {
+        if (j < pattern.len and (pattern[j] == filename[i] or pattern[j] == '?')) {
+            i += 1;
+            j += 1;
+        } else if (j < pattern.len and pattern[j] == '*') {
+            last_star = j;
+            j += 1;
+        } else if (last_star != null) {
+            j = last_star.? + 1;
+            i += 1;
+        } else {
+            return false;
+        }
+    }
+
+    while (j < pattern.len and pattern[j] == '*') j += 1;
+    return j == pattern.len;
+}
+
+pub fn fsRemoveWildcard(pattern: []const u8, recursive: bool, dry_run: bool) !void {
+    const dir = std.fs.path.dirname(pattern) orelse ".";
+    const base_pattern = std.fs.path.basename(pattern);
+
+    var search_dir = std.fs.cwd().openDir(dir, .{ .iterate = true }) catch {
+        logger.err("Directory not found: {s}\n", .{dir});
+        return;
+    };
+    defer search_dir.close();
+
+    var matched_count: usize = 0;
+
+    var iter = search_dir.iterate();
+    while (iter.next() catch null) |entry| {
+        if (matchesWildcard(entry.name, base_pattern)) {
+            matched_count += 1;
+            if (dry_run) {
+                if (std.mem.eql(u8, dir, ".")) {
+                    logger.debug("[dry-run] Remove: {s}\n", .{entry.name});
+                } else {
+                    logger.debug("[dry-run] Remove: {s}/{s}\n", .{ dir, entry.name });
+                }
+            } else {
+                if (std.mem.eql(u8, dir, ".")) {
+                    fsRemove(entry.name, recursive, false) catch {};
+                } else {
+                    const full_path = try std.fs.path.join(std.heap.page_allocator, &.{ dir, entry.name });
+                    defer std.heap.page_allocator.free(full_path);
+                    fsRemove(full_path, recursive, false) catch {};
+                }
+            }
+        }
+    }
+
+    if (matched_count == 0) {
+        logger.info("No files matched: {s}\n", .{pattern});
+    }
+}
 
 /// Creates a file or directory at the specified path.
 ///
@@ -20,23 +89,31 @@ const std = @import("std");
 ///   Returns on first error encountered, prints error message
 pub fn fsCreate(path: []const u8, is_dir: bool, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Create {s}: {s}\n", .{ if (is_dir) "directory" else "file", path });
+        logger.debug("[dry-run] Create {s}: {s}\n", .{ if (is_dir) "directory" else "file", path });
         return;
     }
 
     if (is_dir) {
-        std.fs.cwd().makePath(path) catch {
-            std.debug.print("Error: Failed to create directory: {s}\n", .{path});
+        std.fs.cwd().access(path, .{}) catch {
+            std.fs.cwd().makePath(path) catch {
+                logger.err("Failed to create directory: {s}\n", .{path});
+                return;
+            };
+            logger.info("Created directory: {s}\n", .{path});
             return;
         };
-        std.debug.print("Created directory: {s}\n", .{path});
+        logger.info("Directory already exists: {s}\n", .{path});
     } else {
-        const file = std.fs.cwd().createFile(path, .{}) catch {
-            std.debug.print("Error: Failed to create file: {s}\n", .{path});
+        std.fs.cwd().access(path, .{}) catch {
+            const file = std.fs.cwd().createFile(path, .{}) catch {
+                logger.err("Failed to create file: {s}\n", .{path});
+                return;
+            };
+            file.close();
+            logger.info("Created file: {s}\n", .{path});
             return;
         };
-        file.close();
-        std.debug.print("Created file: {s}\n", .{path});
+        logger.info("File already exists: {s}\n", .{path});
     }
 }
 
@@ -55,13 +132,13 @@ pub fn fsCreate(path: []const u8, is_dir: bool, dry_run: bool) !void {
 ///   Prints error and returns on failure
 pub fn fsRemove(path: []const u8, recursive: bool, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Remove: {s}\n", .{path});
+        logger.debug("[dry-run] Remove: {s}\n", .{path});
         return;
     }
 
     const exists = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
         if (err == error.FileNotFound or err == error.PathNotFound) {
-            std.debug.print("Error: Path not found: {s}\n", .{path});
+            logger.err("Path not found: {s}\n", .{path});
             return;
         }
         break :blk null;
@@ -72,16 +149,16 @@ pub fn fsRemove(path: []const u8, recursive: bool, dry_run: bool) !void {
 
     if (recursive) {
         std.fs.cwd().deleteTree(path) catch |err| {
-            std.debug.print("Error: Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
+            logger.err("Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
             return;
         };
     } else {
         std.fs.cwd().deleteFile(path) catch |err| {
-            std.debug.print("Error: Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
+            logger.err("Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
             return;
         };
     }
-    std.debug.print("Removed: {s}\n", .{path});
+    logger.info("Removed: {s}\n", .{path});
 }
 
 /// Copies a single file from source to destination.
@@ -95,15 +172,15 @@ pub fn fsRemove(path: []const u8, recursive: bool, dry_run: bool) !void {
 ///   - dry_run: If true, only prints the operation without executing
 pub fn fsCopy(src: []const u8, dst: []const u8, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Copy: {s} -> {s}\n", .{ src, dst });
+        logger.debug("[dry-run] Copy: {s} -> {s}\n", .{ src, dst });
         return;
     }
 
     std.fs.cwd().copyFile(src, std.fs.cwd(), dst, .{}) catch {
-        std.debug.print("Error: Source not found: {s}\n", .{src});
+        logger.err("Source not found: {s}\n", .{src});
         return;
     };
-    std.debug.print("Copied: {s} -> {s}\n", .{ src, dst });
+    logger.info("Copied: {s} -> {s}\n", .{ src, dst });
 }
 
 /// Copies a file or directory with optional recursive directory support.
@@ -124,7 +201,7 @@ pub fn fsCopy(src: []const u8, dst: []const u8, dry_run: bool) !void {
 ///   - If src is a directory and recursive=false: prints error
 pub fn fsCopyExtended(src: []const u8, dst: []const u8, recursive: bool, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Copy {s}: {s} -> {s}\n", .{ if (recursive) "recursive" else "", src, dst });
+        logger.debug("[dry-run] Copy {s}: {s} -> {s}\n", .{ if (recursive) "recursive" else "", src, dst });
         return;
     }
 
@@ -132,19 +209,19 @@ pub fn fsCopyExtended(src: []const u8, dst: []const u8, recursive: bool, dry_run
     if (src_file) |f| {
         f.close();
         std.fs.cwd().copyFile(src, std.fs.cwd(), dst, .{}) catch {
-            std.debug.print("Error: Failed to copy to: {s}\n", .{dst});
+            logger.err("Failed to copy to: {s}\n", .{dst});
             return;
         };
-        std.debug.print("Copied: {s} -> {s}\n", .{ src, dst });
+        logger.info("Copied: {s} -> {s}\n", .{ src, dst });
     } else {
         if (recursive) {
             copyDirAll(src, dst) catch {
-                std.debug.print("Error: Source not found: {s}\n", .{src});
+                logger.err("Source not found: {s}\n", .{src});
                 return;
             };
-            std.debug.print("Copied directory: {s} -> {s}\n", .{ src, dst });
+            logger.info("Copied directory: {s} -> {s}\n", .{ src, dst });
         } else {
-            std.debug.print("Error: {s} is a directory, use --recursive\n", .{src});
+            logger.err("{s} is a directory, use --recursive\n", .{src});
         }
     }
 }
@@ -198,39 +275,47 @@ fn copyDirAll(src: []const u8, dst: []const u8) !void {
 ///   - For files with recursive=false: fails if parent doesn't exist
 pub fn fsCreateExtended(path: []const u8, is_dir: bool, recursive: bool, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Create {s}: {s}\n", .{ if (is_dir) "directory" else "file", path });
+        logger.debug("[dry-run] Create {s}: {s}\n", .{ if (is_dir) "directory" else "file", path });
         return;
     }
 
     if (is_dir) {
-        std.fs.cwd().makePath(path) catch {
-            std.debug.print("Error: Failed to create directory: {s}\n", .{path});
+        std.fs.cwd().access(path, .{}) catch {
+            std.fs.cwd().makePath(path) catch {
+                logger.err("Failed to create directory: {s}\n", .{path});
+                return;
+            };
+            logger.info("Created directory: {s}\n", .{path});
             return;
         };
-        std.debug.print("Created directory: {s}\n", .{path});
+        logger.info("Directory already exists: {s}\n", .{path});
     } else {
-        const file = std.fs.cwd().createFile(path, .{}) catch |err| {
-            if (err == error.FileNotFound and recursive) {
-                const parent = std.fs.path.dirname(path);
-                if (parent) |p| {
-                    std.fs.cwd().makePath(p) catch {
-                        std.debug.print("Error: Failed to create parent directory: {s}\n", .{p});
+        std.fs.cwd().access(path, .{}) catch {
+            const file = std.fs.cwd().createFile(path, .{}) catch |err| {
+                if (err == error.FileNotFound and recursive) {
+                    const parent = std.fs.path.dirname(path);
+                    if (parent) |p| {
+                        std.fs.cwd().makePath(p) catch {
+                            logger.err("Failed to create parent directory: {s}\n", .{p});
+                            return;
+                        };
+                        const f = std.fs.cwd().createFile(path, .{}) catch {
+                            logger.err("Failed to create file: {s}\n", .{path});
+                            return;
+                        };
+                        f.close();
+                        logger.info("Created file: {s}\n", .{path});
                         return;
-                    };
-                    const f = std.fs.cwd().createFile(path, .{}) catch {
-                        std.debug.print("Error: Failed to create file: {s}\n", .{path});
-                        return;
-                    };
-                    f.close();
-                    std.debug.print("Created file: {s}\n", .{path});
-                    return;
+                    }
                 }
-            }
-            std.debug.print("Error: Failed to create file: {s}\n", .{path});
+                logger.err("Failed to create file: {s}\n", .{path});
+                return;
+            };
+            file.close();
+            logger.info("Created file: {s}\n", .{path});
             return;
         };
-        file.close();
-        std.debug.print("Created file: {s}\n", .{path});
+        logger.info("File already exists: {s}\n", .{path});
     }
 }
 
@@ -245,15 +330,53 @@ pub fn fsCreateExtended(path: []const u8, is_dir: bool, recursive: bool, dry_run
 ///   - dry_run: If true, only prints the operation without executing
 pub fn fsMove(src: []const u8, dst: []const u8, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Move: {s} -> {s}\n", .{ src, dst });
+        logger.debug("[dry-run] Move: {s} -> {s}\n", .{ src, dst });
         return;
     }
 
     std.fs.cwd().rename(src, dst) catch {
-        std.debug.print("Error: Source not found: {s}\n", .{src});
+        logger.err("Source not found: {s}\n", .{src});
         return;
     };
-    std.debug.print("Moved: {s} -> {s}\n", .{ src, dst });
+    logger.info("Moved: {s} -> {s}\n", .{ src, dst });
+}
+
+pub fn fsListWildcard(pattern: []const u8, dry_run: bool) !void {
+    const dir = std.fs.path.dirname(pattern) orelse ".";
+    const base_pattern = std.fs.path.basename(pattern);
+
+    var search_dir = std.fs.cwd().openDir(dir, .{ .iterate = true }) catch {
+        std.debug.print("[dry-run] List: {s} (dir not found)\n", .{pattern});
+        return;
+    };
+    defer search_dir.close();
+
+    var matched_count: usize = 0;
+
+    const timestamp = std.time.timestamp();
+    const tz_offset: i64 = 8 * 3600;
+    const local_ts = timestamp + tz_offset;
+    const seconds_since_midnight = @mod(local_ts, 86400);
+    const hour = @as(u32, @intCast(@divTrunc(seconds_since_midnight, 3600)));
+    const minute = @as(u32, @intCast(@divTrunc(@mod(seconds_since_midnight, 3600), 60)));
+    const second = @as(u32, @intCast(@mod(seconds_since_midnight, 60)));
+
+    std.debug.print("[{d:02}:{d:02}:{d:02}] INFO\n", .{ hour, minute, second });
+
+    var iter = search_dir.iterate();
+    while (iter.next() catch null) |entry| {
+        if (matchesWildcard(entry.name, base_pattern)) {
+            matched_count += 1;
+            if (!dry_run) {
+                const mark = if (entry.kind == .directory) "/" else "";
+                std.debug.print("  {s}{s}\n", .{ entry.name, mark });
+            }
+        }
+    }
+
+    if (matched_count == 0) {
+        std.debug.print("No files matched: {s}\n", .{pattern});
+    }
 }
 
 /// Lists the contents of a directory.
@@ -273,15 +396,17 @@ pub fn fsMove(src: []const u8, dst: []const u8, dry_run: bool) !void {
 ///   ```
 pub fn fsList(path: []const u8, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] List: {s}\n", .{path});
+        logger.debug("[dry-run] List: {s}\n", .{path});
         return;
     }
 
     var dir = std.fs.cwd().openDir(path, .{ .iterate = true }) catch {
-        std.debug.print("Error: Path not found: {s}\n", .{path});
+        logger.err("Path not found: {s}\n", .{path});
         return;
     };
     defer dir.close();
+
+    logger.info("", .{});
 
     var iter = dir.iterate();
     while (iter.next() catch null) |entry| {
@@ -300,16 +425,16 @@ pub fn fsList(path: []const u8, dry_run: bool) !void {
 ///   Prints "exists" or "not found" message
 pub fn fsExists(path: []const u8, dry_run: bool) void {
     if (dry_run) {
-        std.debug.print("[dry-run] Exists check: {s}\n", .{path});
+        logger.debug("[dry-run] Exists check: {s}\n", .{path});
         return;
     }
 
     const file = std.fs.cwd().openFile(path, .{}) catch null;
     if (file) |f| {
         f.close();
-        std.debug.print("{s} exists\n", .{path});
+        logger.info("{s} exists\n", .{path});
     } else {
-        std.debug.print("{s} not found\n", .{path});
+        logger.info("{s} not found\n", .{path});
     }
 }
 
@@ -323,12 +448,12 @@ pub fn fsExists(path: []const u8, dry_run: bool) void {
 ///   Allocates memory to read the entire file into memory.
 pub fn fsRead(path: []const u8, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Read: {s}\n", .{path});
+        logger.debug("[dry-run] Read: {s}\n", .{path});
         return;
     }
 
     const file = std.fs.cwd().openFile(path, .{}) catch {
-        std.debug.print("Error: File not found: {s}\n", .{path});
+        logger.err("File not found: {s}\n", .{path});
         return;
     };
     defer file.close();
@@ -351,15 +476,15 @@ pub fn fsRead(path: []const u8, dry_run: bool) !void {
 ///   - Truncates existing content
 pub fn fsWrite(path: []const u8, content: []const u8, dry_run: bool) !void {
     if (dry_run) {
-        std.debug.print("[dry-run] Write {d} bytes to: {s}\n", .{ content.len, path });
+        logger.debug("[dry-run] Write {d} bytes to: {s}\n", .{ content.len, path });
         return;
     }
 
     const file = std.fs.cwd().createFile(path, .{}) catch {
-        std.debug.print("Error: Failed to create file: {s}\n", .{path});
+        logger.err("Failed to create file: {s}\n", .{path});
         return;
     };
     defer file.close();
     file.writeAll(content) catch {};
-    std.debug.print("Wrote {d} bytes to: {s}\n", .{ content.len, path });
+    logger.info("Wrote {d} bytes to: {s}\n", .{ content.len, path });
 }

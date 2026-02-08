@@ -8,10 +8,23 @@ A cross-ecosystem package management tool written in **Zig** without third-party
 ## Features
 
 - **Zero dependencies**: Built with pure Zig standard library
-- **Cross-ecosystem**: Unified interface for 8 package managers
+- **Colored output**: ANSI color codes for errors/warnings/info
+- **Wildcard support**: `*` and `?` pattern matching
+- **Smart detection**: File/directory existence checks
 - **Auto-detection**: Automatically detects project type
-- **File system operations**: Built-in `fs` commands
-- **Dry run mode**: Preview commands without execution
+- **File system operations**: Built-in `fs` commands with dry run mode
+
+## Log Format
+
+```
+[17:53:31] INFO Created file: test.txt
+[17:53:31] ERROR Path not found: test.txt
+[17:53:31] DEBUG [dry-run] Remove: old.txt
+```
+
+- **Timestamp**: `[HH:MM:SS]` (local time)
+- **Color coding**: ERROR(red), INFO(green), WARN(yellow), DEBUG(cyan)
+- **Dry-run**: `[dry-run]` prefix for preview
 
 ## Quick Start
 
@@ -22,10 +35,10 @@ cd mg
 zig build
 
 # Add to PATH (Windows)
-set PATH=F:\mcgeq\mg\zig-out\bin;%PATH%
+set PATH=.\mg\zig-out\bin;%PATH%
 
 # Or create alias
-alias mg='F:\mcgeq\mg\zig-out\bin\mg.exe'
+alias mg='.\mg\zig-out\bin\mg.exe'
 
 # Use mg
 mg add lodash          # Add package
@@ -74,6 +87,10 @@ mg fs exists <path>             # Check if path exists
 - `--dry-run`, `-d`: Preview command without execution
 - `--help`, `-h`: Show help
 
+> **Note**: Wildcard patterns (`*`, `?`) must be quoted in shell:
+> - `mg fs r 'test*.txt'` - works
+> - `mg fs r test*.txt` - may be expanded by shell
+
 ## Supported Package Managers
 
 | Package Manager | Commands | Detection File | Priority |
@@ -113,12 +130,37 @@ mg add requests -G dev
 # Equivalent to: poetry add requests --group dev
 ```
 
+### Wildcard Examples (NEW)
+```bash
+# Delete multiple matching files
+mg fs r 'test*.txt'       # Remove all test*.txt files
+mg fs r '*.log'          # Remove all log files
+
+# Preview before deleting
+mg fs r 'old_*.tmp' --dry-run
+
+# Copy with pattern
+mg fs y 'src/*.c' backup/  # Copy all .c files
+```
+
 ## File System Operations
 
 ```bash
 # Create with auto-detection
 mg fs c test.txt       # Create file
 mg fs c src/           # Create directory (trailing /)
+
+# Wildcard support (NEW)
+mg fs r 'test*.txt'      # Delete test1.txt, test2.txt, etc.
+mg fs r 'demo_?.txt'   # Delete demo_a.txt, demo_b.txt (single char)
+mg fs r '*.log'         # Delete all .log files
+mg fs r 'backup*' --dry-run  # Preview deletions
+mg fs ls '*.txt'        # List all .txt files
+mg fs ls 'src/*.zig'    # List all .zig files in src/
+
+# Smart existence check (NEW)
+mg fs c existing.txt
+# [17:53:31] INFO File already exists: existing.txt
 
 # Copy with recursive support
 mg fs y src/ backup/   # Copy directory recursively
@@ -130,22 +172,6 @@ mg fs r dir/           # Remove directory recursively
 # Dry run to preview
 mg --dry-run fs remove old/
 # [dry-run] Remove: old/
-```
-
-## Project Structure
-
-```
-mg/
-├── build.zig           # Zig build configuration
-├── src/
-│   ├── main.zig       # Entry point and CLI parsing
-│   ├── error.zig      # Error types
-│   ├── logger.zig     # Logging utilities
-│   ├── types.zig      # Core types
-│   ├── cache.zig      # Detection caching
-│   ├── config.zig     # Configuration
-│   └── pkgm.zig       # Package manager interface
-└── README.md
 ```
 
 ## Building

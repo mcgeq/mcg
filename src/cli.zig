@@ -5,6 +5,7 @@
 /// and implements the core argument parsing logic.
 const std = @import("std");
 const fs = @import("fs/mod.zig");
+const logger = @import("logger.zig");
 
 /// Result type for CLI parsing.
 ///
@@ -44,11 +45,11 @@ pub const Options = struct {
 /// Displays a summary of available commands, file system operations,
 /// and command-line options for the mg CLI.
 pub fn printHelp() void {
-    std.debug.print("mg - Multi-package manager CLI\n", .{});
-    std.debug.print("Usage: mg [options] <command> [args]\n", .{});
-    std.debug.print("Commands: add, remove, upgrade, install, analyze\n", .{});
-    std.debug.print("FS Commands: fs create, fs remove, fs copy, fs move, fs list, fs read, fs write\n", .{});
-    std.debug.print("Options: --dry-run, --help\n", .{});
+    logger.info("mg - Multi-package manager CLI\n", .{});
+    logger.info("Usage: mg [options] <command> [args]\n", .{});
+    logger.info("Commands: add, remove, upgrade, install, analyze\n", .{});
+    logger.info("FS Commands: fs create, fs remove, fs copy, fs move, fs list, fs read, fs write\n", .{});
+    logger.info("Options: --dry-run, --help\n", .{});
 }
 
 /// Parses command-line options (flags starting with --).
@@ -140,8 +141,8 @@ pub fn parse(args: []const [:0]u8) ParseResult {
 
     if (std.mem.eql(u8, cmd, "fs") or std.mem.eql(u8, cmd, "f")) {
         if (i >= args.len) {
-            std.debug.print("Usage: mg fs <subcommand> [args]\n", .{});
-            std.debug.print("Subcommands: create(c,touch), remove(r), copy(y), move(m), list, read, write\n", .{});
+            logger.info("Usage: mg fs <subcommand> [args]\n", .{});
+            logger.info("Subcommands: create(c,touch), remove(r), copy(y), move(m), list, read, write\n", .{});
             return .none;
         }
         const fs_cmd = args[i];
@@ -153,7 +154,7 @@ pub fn parse(args: []const [:0]u8) ParseResult {
 
     const packages = args[i..];
     if (packages.len == 0 and (cmd[0] == 'a' or cmd[0] == 'A' or cmd[0] == 'r' or cmd[0] == 'R')) {
-        std.debug.print("No packages specified\n", .{});
+        logger.err("No packages specified\n", .{});
         return .none;
     }
 

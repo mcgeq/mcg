@@ -7,6 +7,7 @@ const std = @import("std");
 const MgError = @import("../error.zig").MgError;
 const ManagerType = @import("../types.zig").ManagerType;
 const registry = @import("registry.zig");
+const logger = @import("../logger.zig");
 
 /// Executes a package manager command.
 ///
@@ -42,7 +43,7 @@ const registry = @import("registry.zig");
 /// ```
 pub fn execute(manager_type: ManagerType, action: []const u8, packages: []const [:0]u8, dry_run: bool) MgError!void {
     const cmd_type = registry.getCommand(manager_type, action, packages) orelse {
-        std.debug.print("Unknown command: {s}\n", .{action});
+        logger.err("Unknown command: {s}\n", .{action});
         return error.UnknownSubcommand;
     };
 
@@ -61,10 +62,10 @@ pub fn execute(manager_type: ManagerType, action: []const u8, packages: []const 
         }
     }
 
-    std.debug.print("Executing: {s}\n", .{buf[0..pos]});
+    logger.info("Executing: {s}\n", .{buf[0..pos]});
 
     if (dry_run) {
-        std.debug.print("Dry run - command not executed\n", .{});
+        logger.debug("Dry run - command not executed\n", .{});
         return;
     }
 
@@ -76,27 +77,27 @@ pub fn execute(manager_type: ManagerType, action: []const u8, packages: []const 
     child.stderr_behavior = .Inherit;
 
     child.spawn() catch |err| {
-        std.debug.print("Failed to spawn process: {s}\n", .{@errorName(err)});
+        logger.err("Failed to spawn process: {s}\n", .{@errorName(err)});
         return error.CommandFailed;
     };
 
     const term = child.wait() catch |err| {
-        std.debug.print("Failed to wait for process: {s}\n", .{@errorName(err)});
+        logger.err("Failed to wait for process: {s}\n", .{@errorName(err)});
         return error.CommandFailed;
     };
 
     switch (term) {
         .Exited => |code| {
             if (code != 0) {
-                std.debug.print("Command failed with exit code {d}\n", .{code});
+                logger.err("Command failed with exit code {d}\n", .{code});
                 return error.CommandFailed;
             }
         },
         else => {
-            std.debug.print("Command terminated unexpectedly\n", .{});
+            logger.err("Command terminated unexpectedly\n", .{});
             return error.CommandFailed;
         },
     }
 
-    std.debug.print("Command completed successfully\n", .{});
+    logger.info("Command completed successfully\n", .{});
 }

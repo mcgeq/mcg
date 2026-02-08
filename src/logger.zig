@@ -1,5 +1,21 @@
 const std = @import("std");
-const MgError = @import("error.zig").MgError;
+
+fn getLocalTime() struct { hour: u32, minute: u32, second: u32 } {
+    const timestamp = std.time.timestamp();
+    const tz_offset: i64 = 8 * 3600;
+    const local_ts = timestamp + tz_offset;
+
+    const seconds_since_midnight = @mod(local_ts, 86400);
+    const hour = @as(u32, @intCast(@divTrunc(seconds_since_midnight, 3600)));
+    const minute = @as(u32, @intCast(@divTrunc(@mod(seconds_since_midnight, 3600), 60)));
+    const second = @as(u32, @intCast(@mod(seconds_since_midnight, 60)));
+
+    return .{
+        .hour = hour,
+        .minute = minute,
+        .second = second,
+    };
+}
 
 pub const LogLevel = enum(u8) {
     trace = 0,
@@ -12,19 +28,13 @@ pub const LogLevel = enum(u8) {
 
 pub const Logger = struct {
     level: LogLevel,
-    writer: std.fs.File.Writer,
     enable_ansi: bool,
 
-    pub fn init(level: LogLevel, writer: std.fs.File.Writer) Logger {
+    pub fn init(level: LogLevel) Logger {
         return Logger{
             .level = level,
-            .writer = writer,
-            .enable_ansi = supportsAnsiEscapeCodes(),
+            .enable_ansi = true,
         };
-    }
-
-    pub fn deinit(self: *Logger) void {
-        _ = self;
     }
 
     fn shouldLog(self: *Logger, level: LogLevel) bool {
@@ -34,8 +44,14 @@ pub const Logger = struct {
     pub fn log(self: *Logger, level: LogLevel, message: []const u8) void {
         if (!self.shouldLog(level)) return;
 
-        const timestamp = std.time.timestamp();
         const level_name = @tagName(level);
+        var level_name_upper: [16]u8 = undefined;
+        @memcpy(level_name_upper[0..level_name.len], level_name);
+        for (0..level_name.len) |i| {
+            level_name_upper[i] = std.ascii.toUpper(level_name_upper[i]);
+        }
+
+        const ts = getLocalTime();
 
         if (self.enable_ansi) {
             const reset = "\x1b[0m";
@@ -47,9 +63,9 @@ pub const Logger = struct {
                 .@"error" => "\x1b[31m",
                 else => "",
             };
-            self.writer.print("[{d}] {s}{s}{s} {s}\n", .{ timestamp, color, level_name, reset, message }) catch {};
+            std.debug.print("[{d:02}:{d:02}:{d:02}] {s}{s}{s} {s}\n", .{ ts.hour, ts.minute, ts.second, color, level_name_upper[0..level_name.len], reset, message });
         } else {
-            self.writer.print("[{d}] {s} {s}\n", .{ timestamp, level_name, message }) catch {};
+            std.debug.print("[{d:02}:{d:02}:{d:02}] {s} {s}\n", .{ ts.hour, ts.minute, ts.second, level_name_upper[0..level_name.len], message });
         }
     }
 
@@ -76,10 +92,17 @@ pub const Logger = struct {
     pub fn logFmt(self: *Logger, level: LogLevel, comptime format: []const u8, args: anytype) void {
         if (!self.shouldLog(level)) return;
 
-        const timestamp = std.time.timestamp();
-        const level_name = @tagName(level);
         var buf: [4096]u8 = undefined;
         const message = std.fmt.bufPrint(&buf, format, args) catch "format error";
+
+        const level_name = @tagName(level);
+        var level_name_upper: [16]u8 = undefined;
+        @memcpy(level_name_upper[0..level_name.len], level_name);
+        for (0..level_name.len) |i| {
+            level_name_upper[i] = std.ascii.toUpper(level_name_upper[i]);
+        }
+
+        const ts = getLocalTime();
 
         if (self.enable_ansi) {
             const reset = "\x1b[0m";
@@ -91,9 +114,9 @@ pub const Logger = struct {
                 .@"error" => "\x1b[31m",
                 else => "",
             };
-            self.writer.print("[{d}] {s}{s}{s} {s}\n", .{ timestamp, color, level_name, reset, message }) catch {};
+            std.debug.print("[{d:02}:{d:02}:{d:02}] {s}{s}{s} {s}\n", .{ ts.hour, ts.minute, ts.second, color, level_name_upper[0..level_name.len], reset, message });
         } else {
-            self.writer.print("[{d}] {s} {s}\n", .{ timestamp, level_name, message }) catch {};
+            std.debug.print("[{d:02}:{d:02}:{d:02}] {s} {s}\n", .{ ts.hour, ts.minute, ts.second, level_name_upper[0..level_name.len], message });
         }
     }
 
@@ -118,30 +141,36 @@ pub const Logger = struct {
     }
 };
 
-pub fn supportsAnsiEscapeCodes() bool {
-    if (std.os.getenv("NO_COLOR")) |_| {
-        return false;
-    }
+var global_logger: ?Logger = null;
 
-    const stdout = std.io.getStdOut();
-    if (stdout.supportsAnsiEscapeCodes()) {
-        return true;
+pub fn getLogger() *Logger {
+    if (global_logger == null) {
+        global_logger = Logger.init(.info);
     }
-
-    const stderr = std.io.getStdErr();
-    if (stderr.supportsAnsiEscapeCodes()) {
-        return true;
-    }
-
-    if (std.os.getenv("TERM")) |term| {
-        if (std.mem.eql(u8, term, "dumb")) {
-            return false;
-        }
-        return true;
-    }
-
-    return false;
+    return &global_logger.?;
 }
+
+pub inline fn err(comptime fmt: []const u8, args: anytype) void {
+    getLogger().errorFmt(fmt, args);
+}
+
+pub inline fn warn(comptime fmt: []const u8, args: anytype) void {
+    getLogger().warnFmt(fmt, args);
+}
+
+pub inline fn info(comptime fmt: []const u8, args: anytype) void {
+    getLogger().infoFmt(fmt, args);
+}
+
+pub inline fn debug(comptime fmt: []const u8, args: anytype) void {
+    getLogger().debugFmt(fmt, args);
+}
+
+pub inline fn trace(comptime fmt: []const u8, args: anytype) void {
+    getLogger().traceFmt(fmt, args);
+}
+
+pub fn flushLogger() void {}
 
 pub fn parseLogLevel(level_str: []const u8) LogLevel {
     const upper = std.ascii.lowerString(level_str);

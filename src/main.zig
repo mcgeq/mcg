@@ -17,27 +17,8 @@ const cli = @import("cli.zig");
 const fs = @import("fs/mod.zig");
 const pkgm = @import("pkgm/mod.zig");
 const MgError = @import("error.zig").MgError;
+const logger = @import("logger.zig");
 
-/// Entry point for the mg CLI application.
-///
-/// This function is called by the Zig runtime when the program starts.
-/// It parses command-line arguments and dispatches to the appropriate handler.
-///
-/// Arguments:
-///   - argc: Number of command-line arguments
-///   - argv: Array of argument strings (argv[0] is the program name)
-///
-/// Process:
-///   1. If no arguments provided, print help and exit
-///   2. Parse arguments using cli.parse()
-///   3. Dispatch based on ParseResult:
-///      - .help: Print help message
-///      - .fs: File system operations (handled in parse)
-///      - .pkg: Package management via pkgm.executeCommand()
-///      - .none: No valid command (help already shown)
-///
-/// Returns:
-///   void - All errors are caught and printed internally
 pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     defer std.heap.page_allocator.free(args);

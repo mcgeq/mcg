@@ -16,6 +16,7 @@
 ///   | write     | echo           | Write content to a file        |
 const std = @import("std");
 const fs = @import("../fs.zig");
+const logger = @import("../logger.zig");
 
 const Self = @This();
 
@@ -47,7 +48,7 @@ pub fn handleCommand(cmd: []const u8, args: []const [:0]u8, dry_run: bool) !void
     } else if (std.mem.eql(u8, cmd, "write") or std.mem.eql(u8, cmd, "echo")) {
         try handleWrite(args, dry_run);
     } else {
-        std.debug.print("Unknown fs subcommand: {s}\n", .{cmd});
+        logger.err("Unknown fs subcommand: {s}\n", .{cmd});
     }
 }
 
@@ -68,7 +69,7 @@ pub fn handleCommand(cmd: []const u8, args: []const [:0]u8, dry_run: bool) !void
 ///   Multiple paths can be specified to create multiple items.
 fn handleCreate(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
-        std.debug.print("Usage: mg fs create <path> [--dir] [--recursive|-r]\n", .{});
+        logger.info("Usage: mg fs create <path> [--dir] [--recursive|-r]\n", .{});
         return;
     }
     var is_dir = false;
@@ -101,18 +102,29 @@ fn handleCreate(args: []const [:0]u8, dry_run: bool) !void {
 ///   --recursive, -r: Remove directories and their contents recursively
 fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
-        std.debug.print("Usage: mg fs remove <path> [--recursive|-r]\n", .{});
+        logger.info("Usage: mg fs remove <path> [--recursive|-r]\n", .{});
         return;
     }
+    var is_recursive = false;
     var path_idx: usize = 0;
     for (args, 0..) |p, idx| {
-        if (std.mem.startsWith(u8, p, "--")) continue;
-        path_idx = idx;
+        if (std.mem.eql(u8, p, "--recursive") or std.mem.eql(u8, p, "-r")) {
+            is_recursive = true;
+        } else if (std.mem.startsWith(u8, p, "--")) {
+            continue;
+        } else {
+            path_idx = idx;
+        }
     }
     const paths = args[path_idx..];
     for (paths) |p| {
         if (std.mem.startsWith(u8, p, "--")) continue;
-        fs.fsRemove(p, true, dry_run) catch {};
+        const has_wildcard = std.mem.indexOfAny(u8, p, "*?") != null;
+        if (has_wildcard) {
+            fs.fsRemoveWildcard(p, is_recursive, dry_run) catch {};
+        } else {
+            fs.fsRemove(p, is_recursive, dry_run) catch {};
+        }
     }
 }
 
@@ -128,7 +140,7 @@ fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
 ///   Requires exactly 2 arguments: source and destination.
 fn handleCopy(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
-        std.debug.print("Usage: mg fs copy <src> <dst> [--recursive|-r]\n", .{});
+        logger.info("Usage: mg fs copy <src> <dst> [--recursive|-r]\n", .{});
         return;
     }
     const src = args[0];
@@ -145,7 +157,7 @@ fn handleCopy(args: []const [:0]u8, dry_run: bool) !void {
 ///   - dry_run: If true, preview without executing
 fn handleMove(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
-        std.debug.print("Usage: mg fs move <src> <dst>\n", .{});
+        logger.info("Usage: mg fs move <src> <dst>\n", .{});
         return;
     }
     fs.fsMove(args[0], args[1], dry_run) catch {};
@@ -163,7 +175,12 @@ fn handleMove(args: []const [:0]u8, dry_run: bool) !void {
 ///   Lists files and directories. Directories are suffixed with "/".
 fn handleList(args: []const [:0]u8, dry_run: bool) !void {
     const path = if (args.len > 0) args[0] else ".";
-    fs.fsList(path, dry_run) catch {};
+    const has_wildcard = std.mem.indexOfAny(u8, path, "*?") != null;
+    if (has_wildcard) {
+        fs.fsListWildcard(path, dry_run) catch {};
+    } else {
+        fs.fsList(path, dry_run) catch {};
+    }
 }
 
 /// Handles the "exists" subcommand for checking path existence.
@@ -175,7 +192,7 @@ fn handleList(args: []const [:0]u8, dry_run: bool) !void {
 ///   - dry_run: If true, preview without executing
 fn handleExists(args: []const [:0]u8, dry_run: bool) void {
     if (args.len < 1) {
-        std.debug.print("Usage: mg fs exists <path>\n", .{});
+        logger.info("Usage: mg fs exists <path>\n", .{});
         return;
     }
     fs.fsExists(args[0], dry_run);
@@ -190,7 +207,7 @@ fn handleExists(args: []const [:0]u8, dry_run: bool) void {
 ///   - dry_run: If true, preview without executing
 fn handleRead(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
-        std.debug.print("Usage: mg fs read <path>\n", .{});
+        logger.info("Usage: mg fs read <path>\n", .{});
         return;
     }
     fs.fsRead(args[0], dry_run) catch {};
@@ -208,7 +225,7 @@ fn handleRead(args: []const [:0]u8, dry_run: bool) !void {
 ///   Requires exactly 2 arguments. Content is written verbatim.
 fn handleWrite(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 2) {
-        std.debug.print("Usage: mg fs write <path> <content>\n", .{});
+        logger.info("Usage: mg fs write <path> <content>\n", .{});
         return;
     }
     fs.fsWrite(args[0], args[1], dry_run) catch {};
