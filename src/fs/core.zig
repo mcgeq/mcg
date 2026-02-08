@@ -5,7 +5,7 @@
 /// actually executing it. The module handles file creation, deletion, copying,
 /// moving, and reading/writing operations.
 const std = @import("std");
-const logger = @import("logger.zig");
+const logger = @import("../logger.zig");
 
 fn matchesWildcard(filename: []const u8, pattern: []const u8) bool {
     var i: usize = 0;

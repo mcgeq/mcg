@@ -15,7 +15,7 @@
 ///   | read      | cat            | Read and display file contents |
 ///   | write     | echo           | Write content to a file        |
 const std = @import("std");
-const fs = @import("../fs.zig");
+const fs = @import("core.zig");
 const logger = @import("../logger.zig");
 
 const Self = @This();

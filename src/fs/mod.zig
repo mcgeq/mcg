@@ -3,7 +3,7 @@
 /// This module provides the high-level interface for file system operations.
 /// It delegates to the commands module for parsing and dispatching file system
 /// subcommands. All operations support dry-run mode for previewing actions.
-const fs = @import("../fs.zig");
+const fs = @import("core.zig");
 pub const commands = @import("commands.zig");
 
 /// Handles a file system subcommand by parsing arguments and dispatching to the appropriate handler.
