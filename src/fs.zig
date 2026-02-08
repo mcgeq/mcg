@@ -8,14 +8,10 @@ const std = @import("std");
 const logger = @import("logger.zig");
 
 fn matchesWildcard(filename: []const u8, pattern: []const u8) bool {
-    if (pattern.len == 0) return filename.len == 0;
-    if (pattern.len == 1) {
-        return pattern[0] == '*' or (filename.len == 1 and (pattern[0] == filename[0] or pattern[0] == '?'));
-    }
-
     var i: usize = 0;
     var j: usize = 0;
     var last_star: ?usize = null;
+    var last_match: usize = 0;
 
     while (i < filename.len) {
         if (j < pattern.len and (pattern[j] == filename[i] or pattern[j] == '?')) {
@@ -23,16 +19,21 @@ fn matchesWildcard(filename: []const u8, pattern: []const u8) bool {
             j += 1;
         } else if (j < pattern.len and pattern[j] == '*') {
             last_star = j;
+            last_match = i;
             j += 1;
-        } else if (last_star != null) {
-            j = last_star.? + 1;
-            i += 1;
+        } else if (last_star) |star| {
+            last_match += 1;
+            i = last_match;
+            j = star + 1;
         } else {
             return false;
         }
     }
 
-    while (j < pattern.len and pattern[j] == '*') j += 1;
+    while (j < pattern.len and pattern[j] == '*') {
+        j += 1;
+    }
+
     return j == pattern.len;
 }
 
