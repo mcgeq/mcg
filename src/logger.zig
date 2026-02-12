@@ -51,7 +51,12 @@ pub const Logger = struct {
             level_name_upper[i] = std.ascii.toUpper(level_name_upper[i]);
         }
 
-        const ts = getLocalTime();
+        var stderr_buf: [4096]u8 = undefined;
+        var stdout_buf: [4096]u8 = undefined;
+        var writer = switch (level) {
+            .@"error", .warn => std.fs.File.stderr().writer(&stderr_buf),
+            else => std.fs.File.stdout().writer(&stdout_buf),
+        };
 
         if (self.enable_ansi) {
             const reset = "\x1b[0m";
@@ -63,10 +68,11 @@ pub const Logger = struct {
                 .@"error" => "\x1b[31m",
                 else => "",
             };
-            std.debug.print("[{d:02}:{d:02}:{d:02}] {s}{s}{s} {s}\n", .{ ts.hour, ts.minute, ts.second, color, level_name_upper[0..level_name.len], reset, message });
+            writer.interface.print("{s}[{s}]{s}\n    {s}\n", .{ color, level_name_upper[0..level_name.len], reset, message }) catch {};
         } else {
-            std.debug.print("[{d:02}:{d:02}:{d:02}] {s} {s}\n", .{ ts.hour, ts.minute, ts.second, level_name_upper[0..level_name.len], message });
+            writer.interface.print("[{s}]\n    {s}\n", .{ level_name_upper[0..level_name.len], message }) catch {};
         }
+        writer.interface.flush() catch {};
     }
 
     pub fn trace(self: *Logger, message: []const u8) void {
@@ -102,7 +108,12 @@ pub const Logger = struct {
             level_name_upper[i] = std.ascii.toUpper(level_name_upper[i]);
         }
 
-        const ts = getLocalTime();
+        var stderr_buf: [4096]u8 = undefined;
+        var stdout_buf: [4096]u8 = undefined;
+        var writer = switch (level) {
+            .@"error", .warn => std.fs.File.stderr().writer(&stderr_buf),
+            else => std.fs.File.stdout().writer(&stdout_buf),
+        };
 
         if (self.enable_ansi) {
             const reset = "\x1b[0m";
@@ -114,10 +125,11 @@ pub const Logger = struct {
                 .@"error" => "\x1b[31m",
                 else => "",
             };
-            std.debug.print("[{d:02}:{d:02}:{d:02}] {s}{s}{s} {s}\n", .{ ts.hour, ts.minute, ts.second, color, level_name_upper[0..level_name.len], reset, message });
+            writer.interface.print("{s}[{s}]{s}\n    {s}\n", .{ color, level_name_upper[0..level_name.len], reset, message }) catch {};
         } else {
-            std.debug.print("[{d:02}:{d:02}:{d:02}] {s} {s}\n", .{ ts.hour, ts.minute, ts.second, level_name_upper[0..level_name.len], message });
+            writer.interface.print("[{s}]\n    {s}\n", .{ level_name_upper[0..level_name.len], message }) catch {};
         }
+        writer.interface.flush() catch {};
     }
 
     pub fn traceFmt(self: *Logger, comptime format: []const u8, args: anytype) void {
@@ -130,6 +142,25 @@ pub const Logger = struct {
 
     pub fn infoFmt(self: *Logger, comptime format: []const u8, args: anytype) void {
         self.logFmt(.info, format, args);
+    }
+
+    /// 输出多行消息，只显示一次日志级别
+    pub fn infoMulti(self: *Logger, messages: []const []const u8) void {
+        if (!self.shouldLog(.info)) return;
+
+        var stdout_buf: [4096]u8 = undefined;
+        var writer = std.fs.File.stdout().writer(&stdout_buf);
+
+        if (self.enable_ansi) {
+            writer.interface.print("\x1b[32m[INFO]\x1b[0m\n", .{}) catch {};
+        } else {
+            writer.interface.print("[INFO]\n", .{}) catch {};
+        }
+
+        for (messages) |msg| {
+            writer.interface.print("    {s}\n", .{msg}) catch {};
+        }
+        writer.interface.flush() catch {};
     }
 
     pub fn warnFmt(self: *Logger, comptime format: []const u8, args: anytype) void {
@@ -160,6 +191,10 @@ pub inline fn warn(comptime fmt: []const u8, args: anytype) void {
 
 pub inline fn info(comptime fmt: []const u8, args: anytype) void {
     getLogger().infoFmt(fmt, args);
+}
+
+pub inline fn infoMulti(messages: []const []const u8) void {
+    getLogger().infoMulti(messages);
 }
 
 pub inline fn debug(comptime fmt: []const u8, args: anytype) void {

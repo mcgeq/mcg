@@ -45,11 +45,13 @@ pub const Options = struct {
 /// Displays a summary of available commands, file system operations,
 /// and command-line options for the mg CLI.
 pub fn printHelp() void {
-    logger.info("mg - Multi-package manager CLI\n", .{});
-    logger.info("Usage: mg [options] <command> [args]\n", .{});
-    logger.info("Commands: add, remove, upgrade, install, analyze\n", .{});
-    logger.info("FS Commands: fs create, fs remove, fs copy, fs move, fs list, fs read, fs write\n", .{});
-    logger.info("Options: --dry-run, --help\n", .{});
+    logger.infoMulti(&.{
+        "mg - Multi-package manager CLI",
+        "Usage: mg [options] <command> [args]",
+        "Commands: add, remove, upgrade, install, analyze",
+        "FS Commands: fs create, fs remove, fs copy, fs move, fs list, fs read, fs write",
+        "Options: --dry-run, --help",
+    });
 }
 
 /// Parses command-line options (flags starting with --).
@@ -141,8 +143,10 @@ pub fn parse(args: []const [:0]u8) ParseResult {
 
     if (std.mem.eql(u8, cmd, "fs") or std.mem.eql(u8, cmd, "f")) {
         if (i >= args.len) {
-            logger.info("Usage: mg fs <subcommand> [args]\n", .{});
-            logger.info("Subcommands: create(c,touch), remove(r), copy(y), move(m), list, read, write\n", .{});
+            logger.infoMulti(&.{
+                "Usage: mg fs <subcommand> [args]",
+                "Subcommands: create(c,touch), remove(r), copy(y), move(m), list, read, write",
+            });
             return .none;
         }
         const fs_cmd = args[i];

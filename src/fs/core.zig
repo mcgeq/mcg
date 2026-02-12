@@ -139,7 +139,7 @@ pub fn fsRemove(path: []const u8, recursive: bool, dry_run: bool) !void {
 
     const exists = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
         if (err == error.FileNotFound or err == error.PathNotFound) {
-            logger.err("Path not found: {s}\n", .{path});
+            logger.err("Path not found: {s}", .{path});
             return;
         }
         break :blk null;
