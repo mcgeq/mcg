@@ -1,11 +1,12 @@
-/// Command-line interface module.
+/// Command-line parser module.
 ///
-/// This module handles all command-line argument parsing and provides
-/// help text output for the mg CLI. It defines the parsing result types
-/// and implements the core argument parsing logic.
+/// This module handles all command-line argument parsing for the mg CLI.
+/// It defines the parsing result types and implements the core argument
+/// parsing logic.
 const std = @import("std");
-const fs = @import("fs/mod.zig");
-const logger = @import("logger.zig");
+const fs = @import("../fs/mod.zig");
+const logger = @import("../core/logger.zig");
+const help = @import("help.zig");
 
 /// Result type for CLI parsing.
 ///
@@ -39,20 +40,6 @@ pub const Options = struct {
     /// Preview mode - show what would happen without executing
     dry_run: bool = false,
 };
-
-/// Prints the help information to stdout.
-///
-/// Displays a summary of available commands, file system operations,
-/// and command-line options for the mg CLI.
-pub fn printHelp() void {
-    logger.infoMulti(&.{
-        "mg - Multi-package manager CLI",
-        "Usage: mg [options] <command> [args]",
-        "Commands: add, remove, upgrade, install, analyze",
-        "FS Commands: fs create, fs remove, fs copy, fs move, fs list, fs read, fs write",
-        "Options: --dry-run, --help",
-    });
-}
 
 /// Parses command-line options (flags starting with --).
 ///
@@ -134,7 +121,7 @@ pub fn parse(args: []const [:0]u8) ParseResult {
     }
 
     if (i >= args.len) {
-        printHelp();
+        help.printHelp();
         return .none;
     }
 
@@ -143,10 +130,7 @@ pub fn parse(args: []const [:0]u8) ParseResult {
 
     if (std.mem.eql(u8, cmd, "fs") or std.mem.eql(u8, cmd, "f")) {
         if (i >= args.len) {
-            logger.infoMulti(&.{
-                "Usage: mg fs <subcommand> [args]",
-                "Subcommands: create(c,touch), remove(r), copy(y), move(m), list, read, write",
-            });
+            help.printFsHelp();
             return .none;
         }
         const fs_cmd = args[i];

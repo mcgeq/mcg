@@ -4,7 +4,7 @@
 /// It provides a unified interface for common operations across all supported
 /// package managers, translating simple commands like "add" or "remove" into
 /// the appropriate native commands for each ecosystem.
-const ManagerType = @import("../types.zig").ManagerType;
+const ManagerType = @import("../core/types.zig").ManagerType;
 
 /// Returns the command-line name for a given package manager.
 ///

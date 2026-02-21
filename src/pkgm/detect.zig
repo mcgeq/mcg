@@ -5,7 +5,7 @@
 /// The detection follows a priority-based approach where lower numbers indicate
 /// higher priority (checked first).
 const std = @import("std");
-const ManagerType = @import("../types.zig").ManagerType;
+const ManagerType = @import("../core/types.zig").ManagerType;
 
 /// Detects the current package manager type by checking for lock files.
 ///

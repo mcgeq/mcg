@@ -5,7 +5,7 @@
 /// actually executing it. The module handles file creation, deletion, copying,
 /// moving, and reading/writing operations.
 const std = @import("std");
-const logger = @import("../logger.zig");
+const logger = @import("../core/logger.zig");
 
 fn matchesWildcard(filename: []const u8, pattern: []const u8) bool {
     var i: usize = 0;
@@ -137,22 +137,20 @@ pub fn fsRemove(path: []const u8, recursive: bool, dry_run: bool) !void {
         return;
     }
 
-    const exists = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
-        if (err == error.FileNotFound or err == error.PathNotFound) {
-            logger.err("Path not found: {s}", .{path});
-            return;
+    var dir = std.fs.cwd().openDir(path, .{}) catch null;
+    if (dir) |*d| {
+        d.close();
+        if (recursive) {
+            std.fs.cwd().deleteTree(path) catch |err| {
+                logger.err("Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
+                return;
+            };
+        } else {
+            std.fs.cwd().deleteDir(path) catch |err| {
+                logger.err("Failed to remove {s}: {s} (use --recursive to remove directory and contents)\n", .{ path, @errorName(err) });
+                return;
+            };
         }
-        break :blk null;
-    };
-    if (exists) |f| {
-        f.close();
-    }
-
-    if (recursive) {
-        std.fs.cwd().deleteTree(path) catch |err| {
-            logger.err("Failed to remove {s}: {s}\n", .{ path, @errorName(err) });
-            return;
-        };
     } else {
         std.fs.cwd().deleteFile(path) catch |err| {
             logger.err("Failed to remove {s}: {s}\n", .{ path, @errorName(err) });

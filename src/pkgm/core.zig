@@ -4,9 +4,9 @@
 /// It combines detection, command registration, and execution into a simple API
 /// that automatically handles the complexity of working with multiple package managers.
 const std = @import("std");
-const MgError = @import("../error.zig").MgError;
-const ManagerType = @import("../types.zig").ManagerType;
-const logger = @import("../logger.zig");
+const MgError = @import("../core/error.zig").MgError;
+const ManagerType = @import("../core/types.zig").ManagerType;
+const logger = @import("../core/logger.zig");
 
 pub const detect = @import("detect.zig");
 pub const registry = @import("registry.zig");

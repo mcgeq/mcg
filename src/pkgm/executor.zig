@@ -4,10 +4,10 @@
 /// It builds the command string, spawns the child process, and manages
 /// the execution lifecycle including error handling and dry-run support.
 const std = @import("std");
-const MgError = @import("../error.zig").MgError;
-const ManagerType = @import("../types.zig").ManagerType;
+const MgError = @import("../core/error.zig").MgError;
+const ManagerType = @import("../core/types.zig").ManagerType;
 const registry = @import("registry.zig");
-const logger = @import("../logger.zig");
+const logger = @import("../core/logger.zig");
 
 /// Executes a package manager command.
 ///

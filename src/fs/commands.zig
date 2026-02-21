@@ -16,7 +16,7 @@
 ///   | write     | echo           | Write content to a file        |
 const std = @import("std");
 const fs = @import("core.zig");
-const logger = @import("../logger.zig");
+const logger = @import("../core/logger.zig");
 
 const Self = @This();
 
@@ -102,15 +102,15 @@ fn handleCreate(args: []const [:0]u8, dry_run: bool) !void {
 ///   --recursive, -r: Remove directories and their contents recursively
 fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
     if (args.len < 1) {
-        logger.info("Usage: mg fs remove <path> [--recursive|-r]\n", .{});
+        logger.info("Usage: mg fs remove <path> [--recursive|-r|-p]\n", .{});
         return;
     }
     var is_recursive = false;
     var path_idx: usize = 0;
     for (args, 0..) |p, idx| {
-        if (std.mem.eql(u8, p, "--recursive") or std.mem.eql(u8, p, "-r")) {
+        if (std.mem.eql(u8, p, "--recursive") or std.mem.eql(u8, p, "-r") or std.mem.eql(u8, p, "-p")) {
             is_recursive = true;
-        } else if (std.mem.startsWith(u8, p, "--")) {
+        } else if (std.mem.startsWith(u8, p, "-")) {
             continue;
         } else {
             path_idx = idx;
@@ -118,7 +118,7 @@ fn handleRemove(args: []const [:0]u8, dry_run: bool) !void {
     }
     const paths = args[path_idx..];
     for (paths) |p| {
-        if (std.mem.startsWith(u8, p, "--")) continue;
+        if (std.mem.startsWith(u8, p, "-")) continue;
         const has_wildcard = std.mem.indexOfAny(u8, p, "*?") != null;
         if (has_wildcard) {
             fs.fsRemoveWildcard(p, is_recursive, dry_run) catch {};
