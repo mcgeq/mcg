@@ -86,11 +86,12 @@ jobs:
           host="$(uname -m)-linux"
           archive="zig-$host-$ZIG_VERSION.tar.xz"
           url="https://ziglang.org/download/$ZIG_VERSION/$archive"
+          zig_root="$RUNNER_TEMP/zig-$host-$ZIG_VERSION"
 
           curl -L "$url" -o "$RUNNER_TEMP/$archive"
           tar -xf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/zig-$host-$ZIG_VERSION" >> "$GITHUB_PATH"
-          zig version
+          echo "$zig_root" >> "$GITHUB_PATH"
+          "$zig_root/zig" version
 
       - name: Build release binary
         shell: bash
@@ -155,11 +156,12 @@ jobs:
 
           archive="zig-$host-$ZIG_VERSION.tar.xz"
           url="https://ziglang.org/download/$ZIG_VERSION/$archive"
+          zig_root="$RUNNER_TEMP/zig-$host-$ZIG_VERSION"
 
           curl -L "$url" -o "$RUNNER_TEMP/$archive"
           tar -xf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/zig-$host-$ZIG_VERSION" >> "$GITHUB_PATH"
-          zig version
+          echo "$zig_root" >> "$GITHUB_PATH"
+          "$zig_root/zig" version
 
       - name: Build release binary
         shell: bash
@@ -231,7 +233,8 @@ jobs:
           }
 
           $zig_root | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          zig version
+          $zig_bin = Join-Path $zig_root "zig.exe"
+          & $zig_bin version
 
       - name: Build release binary
         run: |
