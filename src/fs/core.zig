@@ -1352,7 +1352,25 @@ test "fsListWildcard dry run does not require an existing directory" {
     defer environ_map.deinit();
     setTestRuntime(&environ_map);
 
+    const log = logger.getLogger();
+    const old_level = log.level;
+    const old_ansi = log.enable_ansi;
+    defer {
+        logger.getLogger().level = old_level;
+        logger.getLogger().enable_ansi = old_ansi;
+    }
+    log.level = .info;
+    log.enable_ansi = false;
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous_output = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous_output);
+
     try fsListWildcard("missing/*.zig", true);
+
+    try std.testing.expectEqualStrings("[INFO]\n    [dry-run] List: missing/*.zig\n", capture.stdout.items);
+    try std.testing.expectEqual(@as(usize, 0), capture.stderr.items.len);
 }
 
 test "fsListWildcard writes recursive matches to captured stdout" {

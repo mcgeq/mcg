@@ -370,6 +370,11 @@ const OutputSinkState = struct {
     stderr: ?runtime.OutputSink,
 };
 
+const LoggerState = struct {
+    level: logger.LogLevel,
+    enable_ansi: bool,
+};
+
 fn installOutputCapture(capture: *TestOutputCapture) OutputSinkState {
     return .{
         .stdout = runtime.swapOutputSink(.stdout, capture.stdoutSink()),
@@ -380,6 +385,23 @@ fn installOutputCapture(capture: *TestOutputCapture) OutputSinkState {
 fn restoreOutputCapture(state: OutputSinkState) void {
     _ = runtime.swapOutputSink(.stdout, state.stdout);
     _ = runtime.swapOutputSink(.stderr, state.stderr);
+}
+
+fn installPlainLogger() LoggerState {
+    const log = logger.getLogger();
+    const state: LoggerState = .{
+        .level = log.level,
+        .enable_ansi = log.enable_ansi,
+    };
+    log.level = .info;
+    log.enable_ansi = false;
+    return state;
+}
+
+fn restoreLoggerState(state: LoggerState) void {
+    const log = logger.getLogger();
+    log.level = state.level;
+    log.enable_ansi = state.enable_ansi;
 }
 
 fn expectInvocation(result: App.PackageParseResult) !App.PackageInvocation {
@@ -439,11 +461,29 @@ test "parse package invocation supports dev group and passthrough" {
 }
 
 test "parse package invocation rejects unknown option before passthrough separator" {
+    var environ_map = std.process.Environ.Map.init(std.testing.allocator);
+    defer environ_map.deinit();
+    setTestRuntime(&environ_map);
+
+    const logger_state = installPlainLogger();
+    defer restoreLoggerState(logger_state);
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous_output = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous_output);
+
     try expectParseReportedError(try App.parsePackageInvocation(std.testing.allocator, &.{
         "mg",
         "add",
         "--frozen",
     }));
+
+    try std.testing.expectEqualStrings(
+        "[ERROR]\n    Unknown package option: --frozen (use -- to pass manager-native args)\n",
+        capture.stderr.items,
+    );
+    try std.testing.expectEqual(@as(usize, 0), capture.stdout.items.len);
 }
 
 test "parse package invocation supports dev and group before action" {
@@ -505,12 +545,30 @@ test "parse package invocation accepts profile alias and keeps order with groups
 }
 
 test "parse package invocation rejects unknown option before action" {
+    var environ_map = std.process.Environ.Map.init(std.testing.allocator);
+    defer environ_map.deinit();
+    setTestRuntime(&environ_map);
+
+    const logger_state = installPlainLogger();
+    defer restoreLoggerState(logger_state);
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous_output = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous_output);
+
     try expectParseReportedError(try App.parsePackageInvocation(std.testing.allocator, &.{
         "mg",
         "--frozen",
         "add",
         "ruff",
     }));
+
+    try std.testing.expectEqualStrings(
+        "[ERROR]\n    Unknown package option: --frozen (use -- to pass manager-native args)\n",
+        capture.stderr.items,
+    );
+    try std.testing.expectEqual(@as(usize, 0), capture.stdout.items.len);
 }
 
 test "parse package invocation returns none when only options are provided" {
@@ -1026,9 +1084,27 @@ test "parse package invocation supports short cwd option" {
 }
 
 test "parse package invocation rejects missing cwd path" {
+    var environ_map = std.process.Environ.Map.init(std.testing.allocator);
+    defer environ_map.deinit();
+    setTestRuntime(&environ_map);
+
+    const logger_state = installPlainLogger();
+    defer restoreLoggerState(logger_state);
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous_output = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous_output);
+
     try expectParseReportedError(try App.parsePackageInvocation(std.testing.allocator, &.{
         "mg",
         "add",
         "--cwd",
     }));
+
+    try std.testing.expectEqualStrings(
+        "[ERROR]\n    Missing path after --cwd\n",
+        capture.stderr.items,
+    );
+    try std.testing.expectEqual(@as(usize, 0), capture.stdout.items.len);
 }

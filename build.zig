@@ -65,6 +65,10 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_exe_tests.step);
 
+    if (b.args) |args| {
+        run_exe_tests.addArgs(args);
+    }
+
     const smoke_exe = b.addExecutable(.{
         .name = "mg-smoke",
         .root_module = b.createModule(.{
