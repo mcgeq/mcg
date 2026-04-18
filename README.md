@@ -380,7 +380,31 @@ zig build smoke -- uv_exec_tree poetry_exec_show pdm_exec_list
 zig build smoke -- pdm_exec_run_list pdm_exec_script_shortcut
 ```
 
-Use Zig `0.16.0`. `build.zig.zon` declares the package version and minimum Zig version, and `build.zig` enforces an exact `0.16.0` build.
+## GitHub Release Packaging
+
+- Workflow file: `.github/workflows/release.yml`
+- Trigger:
+  - push a formal release tag such as `v0.1.0`
+  - or run `workflow_dispatch` manually with the same tag format, for example `v0.1.0`
+- The workflow will:
+  - create or reuse the matching GitHub Release
+  - download official Zig `0.16.0`
+  - build and upload these Release assets:
+    - `mg-<tag>-windows-x86_64.exe`
+    - `mg-<tag>-windows-x86_64.zip`
+    - `mg-<tag>-windows-x86_64.sha256.txt`
+    - `mg-<tag>-linux-x86_64`
+    - `mg-<tag>-linux-x86_64.tar.gz`
+    - `mg-<tag>-linux-x86_64.sha256.txt`
+    - `mg-<tag>-macos-aarch64`
+    - `mg-<tag>-macos-aarch64.tar.gz`
+    - `mg-<tag>-macos-aarch64.sha256.txt`
+- Typical flow:
+  - `git tag v0.1.0`
+  - `git push origin v0.1.0`
+  - wait for Actions to create or update the matching GitHub Release
+
+Use Zig `0.16.0`. `build.zig.zon` declares the package version and minimum Zig version, and `build.zig` enforces an exact `0.16.0` build. The `mg` package version in `build.zig.zon` remains `0.1.0`, while the Git Release tag uses the conventional `v` prefix, for example `v0.1.0`.
 
 `zig build smoke` creates minimal sample projects under `.zig-cache/smoke/<scenario>` and runs real subprocess verification against locally available package managers. Current coverage includes `run`, `exec -- --version`, profile-oriented dry-run previews for `uv`, `poetry`, and `pdm`, dry-run previews for `package.json` / `packageManager` fallback detection, monorepo/workspace child-package start-directory routing, plus more native flows such as `cargo test`, `cargo check`, `cargo metadata --no-deps`, `npm exec -- node smoke.js`, `npm list`, `pnpm exec node smoke.js`, `pnpm list`, `bun test`, `yarn list`, `poetry check`, `poetry show`, `poetry run python smoke.py`, `pdm list`, `pdm run --list`, `pdm <script>` shortcuts, `pdm run python smoke.py`, `uv lock`, `uv sync`, `uv tree`, and native `exec -- run ...` passthrough for `npm`, `pnpm`, `bun`, `yarn`, `uv`, `poetry`, and `pdm`. The new workspace smoke coverage now explicitly exercises both “parent `pnpm` workspace root + child plain `package.json`” and “parent Cargo root + child plain `package.json`” routing, and now also brings Python-native `tree/show/list` style commands plus PDM script shortcuts into the same verification chain. Missing managers are reported as `SKIP`, and clearly local toolchain blockers are also downgraded to `SKIP` so they do not look like `mg` routing regressions.
 

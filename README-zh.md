@@ -416,7 +416,31 @@ zig build smoke -- uv_exec_tree poetry_exec_show pdm_exec_list
 zig build smoke -- pdm_exec_run_list pdm_exec_script_shortcut
 ```
 
-请使用 Zig `0.16.0`。仓库通过 `build.zig.zon` 声明 `mg` 自身版本与最低 Zig 版本，并在 `build.zig` 中强制要求精确 `0.16.0`。
+## GitHub Release 自动打包
+
+- 工作流文件: `.github/workflows/release.yml`
+- 触发条件:
+  - 推送正式版本 tag，例如 `v0.1.0`
+  - 或手动触发 `workflow_dispatch`，并输入同样格式的 tag，例如 `v0.1.0`
+- 工作流会:
+  - 自动创建或复用同名 GitHub Release
+  - 下载官方 Zig `0.16.0`
+  - 构建并上传以下 Release 资产:
+    - `mg-<tag>-windows-x86_64.exe`
+    - `mg-<tag>-windows-x86_64.zip`
+    - `mg-<tag>-windows-x86_64.sha256.txt`
+    - `mg-<tag>-linux-x86_64`
+    - `mg-<tag>-linux-x86_64.tar.gz`
+    - `mg-<tag>-linux-x86_64.sha256.txt`
+    - `mg-<tag>-macos-aarch64`
+    - `mg-<tag>-macos-aarch64.tar.gz`
+    - `mg-<tag>-macos-aarch64.sha256.txt`
+- 典型使用方式:
+  - `git tag v0.1.0`
+  - `git push origin v0.1.0`
+  - 等待 Actions 自动创建/更新 Release 并上传资产
+
+请使用 Zig `0.16.0`。仓库通过 `build.zig.zon` 声明 `mg` 自身版本与最低 Zig 版本，并在 `build.zig` 中强制要求精确 `0.16.0`。其中 `build.zig.zon` 内的 `mg` 版本号仍为 `0.1.0`，而 Git Release tag 使用带 `v` 前缀的 `v0.1.0`，这是常见且正常的约定。
 
 `zig build smoke` 会在 `.zig-cache/smoke/<scenario>` 下生成最小示例工程，并对本机可用的包管理器执行真实子进程验证。当前覆盖范围已经包括 `run`、`exec -- --version`、`uv` / `poetry` / `pdm` 的 profile 类 dry-run 预览场景、`package.json` / `packageManager` fallback 的 dry-run 预览场景、monorepo/workspace 子包起始目录裁决场景，以及更贴近原生命令的 `cargo test`、`cargo check`、`cargo metadata --no-deps`、`npm exec -- node smoke.js`、`npm list`、`pnpm exec node smoke.js`、`pnpm list`、`bun test`、`yarn list`、`poetry check`、`poetry show`、`poetry run python smoke.py`、`pdm list`、`pdm run --list`、`pdm <script>` shortcut、`pdm run python smoke.py`、`uv lock`、`uv sync`、`uv tree`，以及 `npm` / `pnpm` / `bun` / `yarn` / `uv` / `poetry` / `pdm` 的 `exec -- run ...` 透传路径。新增 smoke 也已经覆盖了“父层 `pnpm` workspace 根 + 子包普通 `package.json`”和“父层 Cargo 根 + 子包普通 `package.json`”这两类典型混合仓库裁决，并把 Python 生态更高层的 `tree/show/list` 原生命令与 `pdm` 脚本型 shortcut 一起纳入了同一套验证链路。未安装的管理器会标记为 `SKIP`；像本机工具链缺件这类明确的环境阻塞也会被标记为 `SKIP`，避免误判为 `mg` 分发错误。
 
