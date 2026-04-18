@@ -1,4 +1,5 @@
 const std = @import("std");
+const runtime = @import("runtime.zig");
 
 pub const LogLevel = enum(u8) {
     trace = 0,
@@ -55,55 +56,58 @@ pub const Logger = struct {
         };
     }
 
-    pub fn log(self: *Logger, level: LogLevel, message: []const u8) void {
-        if (!self.shouldLog(level)) return;
-
-        const file = switch (level) {
-            .@"error", .warn => std.fs.File.stderr(),
-            else => std.fs.File.stdout(),
-        };
-
-        const level_name = getLevelName(level);
-        const color = if (self.enable_ansi) getColor(level) else "";
-        const reset = if (self.enable_ansi) ansi_colors.reset else "";
-
-        // 使用固定缓冲区一次性构建完整输出
-        var buf: [2048]u8 = undefined;
-        var pos: usize = 0;
-
-        // 写入颜色
-        @memcpy(buf[pos .. pos + color.len], color);
-        pos += color.len;
-
-        // 写入 [LEVEL]
-        buf[pos] = '[';
-        pos += 1;
-        @memcpy(buf[pos .. pos + level_name.len], level_name);
-        pos += level_name.len;
-        buf[pos] = ']';
-        pos += 1;
-
-        // 写入reset
-        @memcpy(buf[pos .. pos + reset.len], reset);
-        pos += reset.len;
-
-        // 写入换行和缩进
-        @memcpy(buf[pos .. pos + 5], "\n    ");
-        pos += 5;
-
-        // 写入消息（去除末尾的换行符，避免双换行）
-        const msg_trimmed = if (message.len > 0 and message[message.len - 1] == '\n')
+    fn trimTrailingNewline(message: []const u8) []const u8 {
+        return if (message.len > 0 and message[message.len - 1] == '\n')
             message[0 .. message.len - 1]
         else
             message;
-        @memcpy(buf[pos .. pos + msg_trimmed.len], msg_trimmed);
-        pos += msg_trimmed.len;
+    }
 
-        // 写入换行
-        buf[pos] = '\n';
-        pos += 1;
+    fn formatLogLine(
+        buf: []u8,
+        level: LogLevel,
+        enable_ansi: bool,
+        message: []const u8,
+    ) ![]const u8 {
+        const level_name = getLevelName(level);
+        const color = if (enable_ansi) getColor(level) else "";
+        const reset = if (enable_ansi) ansi_colors.reset else "";
+        const msg_trimmed = trimTrailingNewline(message);
 
-        _ = file.write(buf[0..pos]) catch {};
+        const rendered = try std.fmt.bufPrint(
+            buf,
+            "{s}[{s}]{s}\n    {s}\n",
+            .{ color, level_name, reset, msg_trimmed },
+        );
+        return rendered;
+    }
+
+    fn formatInfoMulti(
+        buf: []u8,
+        enable_ansi: bool,
+        messages: []const []const u8,
+    ) ![]const u8 {
+        const color = if (enable_ansi) ansi_colors.info else "";
+        const reset = if (enable_ansi) ansi_colors.reset else "";
+
+        var stream = std.Io.Writer.fixed(buf);
+        try stream.print("{s}[INFO]{s}\n", .{ color, reset });
+        for (messages) |msg| {
+            try stream.print("    {s}\n", .{trimTrailingNewline(msg)});
+        }
+
+        return stream.buffered();
+    }
+
+    pub fn log(self: *Logger, level: LogLevel, message: []const u8) void {
+        if (!self.shouldLog(level)) return;
+
+        var buf: [2048]u8 = undefined;
+        const rendered = formatLogLine(&buf, level, self.enable_ansi, message) catch return;
+        switch (level) {
+            .@"error", .warn => runtime.writeStderr(rendered),
+            else => runtime.writeStdout(rendered),
+        }
     }
 
     pub fn trace(self: *Logger, message: []const u8) void {
@@ -149,59 +153,24 @@ pub const Logger = struct {
     pub fn infoMulti(self: *Logger, messages: []const []const u8) void {
         if (!self.shouldLog(.info)) return;
 
-        const file = std.fs.File.stdout();
-        const color = if (self.enable_ansi) ansi_colors.info else "";
-        const reset = if (self.enable_ansi) ansi_colors.reset else "";
-
-        // 预计算总大小
-        var total_len: usize = color.len + 6 + reset.len + 1; // [INFO] + reset + \n
-        for (messages) |msg| {
-            total_len += 4 + msg.len + 1; // "    " + msg + "\n"
-        }
-
-        if (total_len > 4096) {
+        var buf: [4096]u8 = undefined;
+        const rendered = formatInfoMulti(&buf, self.enable_ansi, messages) catch {
             // 消息太长，回退到多次写入
-            _ = file.write(color) catch {};
-            _ = file.write("[INFO]") catch {};
-            _ = file.write(reset) catch {};
-            _ = file.write("\n") catch {};
+            const color = if (self.enable_ansi) ansi_colors.info else "";
+            const reset = if (self.enable_ansi) ansi_colors.reset else "";
+            runtime.writeStdout(color);
+            runtime.writeStdout("[INFO]");
+            runtime.writeStdout(reset);
+            runtime.writeStdout("\n");
 
             for (messages) |msg| {
                 var line_buf: [1024]u8 = undefined;
                 const line = std.fmt.bufPrint(&line_buf, "    {s}\n", .{msg}) catch continue;
-                _ = file.write(line) catch {};
+                runtime.writeStdout(line);
             }
             return;
-        }
-
-        // 一次性构建完整输出
-        var buf: [4096]u8 = undefined;
-        var pos: usize = 0;
-
-        @memcpy(buf[pos .. pos + color.len], color);
-        pos += color.len;
-        @memcpy(buf[pos .. pos + 6], "[INFO]");
-        pos += 6;
-        @memcpy(buf[pos .. pos + reset.len], reset);
-        pos += reset.len;
-        buf[pos] = '\n';
-        pos += 1;
-
-        for (messages) |msg| {
-            @memcpy(buf[pos .. pos + 4], "    ");
-            pos += 4;
-            // 去除消息末尾的换行符
-            const msg_trimmed = if (msg.len > 0 and msg[msg.len - 1] == '\n')
-                msg[0 .. msg.len - 1]
-            else
-                msg;
-            @memcpy(buf[pos .. pos + msg_trimmed.len], msg_trimmed);
-            pos += msg_trimmed.len;
-            buf[pos] = '\n';
-            pos += 1;
-        }
-
-        _ = file.write(buf[0..pos]) catch {};
+        };
+        runtime.writeStdout(rendered);
     }
 
     pub fn warnFmt(self: *Logger, comptime format: []const u8, args: anytype) void {
@@ -249,12 +218,142 @@ pub inline fn trace(comptime fmt: []const u8, args: anytype) void {
 pub fn flushLogger() void {}
 
 pub fn parseLogLevel(level_str: []const u8) LogLevel {
-    const upper = std.ascii.lowerString(level_str);
-    if (std.mem.eql(u8, upper, "trace")) return .trace;
-    if (std.mem.eql(u8, upper, "debug")) return .debug;
-    if (std.mem.eql(u8, upper, "info")) return .info;
-    if (std.mem.eql(u8, upper, "warn")) return .warn;
-    if (std.mem.eql(u8, upper, "error")) return .@"error";
-    if (std.mem.eql(u8, upper, "off")) return .off;
+    var lower_buf: [16]u8 = undefined;
+    const lower = std.ascii.lowerString(&lower_buf, level_str);
+    if (std.mem.eql(u8, lower, "trace")) return .trace;
+    if (std.mem.eql(u8, lower, "debug")) return .debug;
+    if (std.mem.eql(u8, lower, "info")) return .info;
+    if (std.mem.eql(u8, lower, "warn")) return .warn;
+    if (std.mem.eql(u8, lower, "error")) return .@"error";
+    if (std.mem.eql(u8, lower, "off")) return .off;
     return .info;
+}
+
+test "Logger.formatLogLine renders plain info message" {
+    var buf: [256]u8 = undefined;
+    const rendered = try Logger.formatLogLine(&buf, .info, false, "done");
+    try std.testing.expectEqualStrings("[INFO]\n    done\n", rendered);
+}
+
+test "Logger.formatLogLine trims trailing newline and keeps ansi" {
+    var buf: [256]u8 = undefined;
+    const rendered = try Logger.formatLogLine(&buf, .@"error", true, "boom\n");
+    try std.testing.expectEqualStrings("\x1b[31m[ERROR]\x1b[0m\n    boom\n", rendered);
+}
+
+test "Logger.formatInfoMulti renders multiple plain lines" {
+    var buf: [256]u8 = undefined;
+    const rendered = try Logger.formatInfoMulti(&buf, false, &.{ "alpha", "beta" });
+    try std.testing.expectEqualStrings("[INFO]\n    alpha\n    beta\n", rendered);
+}
+
+test "Logger.formatInfoMulti trims per-line trailing newlines" {
+    var buf: [256]u8 = undefined;
+    const rendered = try Logger.formatInfoMulti(&buf, true, &.{ "alpha\n", "beta\n" });
+    try std.testing.expectEqualStrings("\x1b[32m[INFO]\x1b[0m\n    alpha\n    beta\n", rendered);
+}
+
+test "parseLogLevel accepts common values case-insensitively" {
+    try std.testing.expectEqual(.trace, parseLogLevel("TRACE"));
+    try std.testing.expectEqual(.debug, parseLogLevel("debug"));
+    try std.testing.expectEqual(.info, parseLogLevel("Info"));
+    try std.testing.expectEqual(.warn, parseLogLevel("warn"));
+    try std.testing.expectEqual(.@"error", parseLogLevel("ERROR"));
+    try std.testing.expectEqual(.off, parseLogLevel("off"));
+    try std.testing.expectEqual(.info, parseLogLevel("unknown"));
+}
+
+const TestOutputCapture = struct {
+    stdout: std.ArrayList(u8) = .empty,
+    stderr: std.ArrayList(u8) = .empty,
+
+    fn deinit(self: *TestOutputCapture, allocator: std.mem.Allocator) void {
+        self.stdout.deinit(allocator);
+        self.stderr.deinit(allocator);
+    }
+
+    fn stdoutSink(self: *TestOutputCapture) runtime.OutputSink {
+        return .{
+            .context = self,
+            .writeFn = writeStdout,
+        };
+    }
+
+    fn stderrSink(self: *TestOutputCapture) runtime.OutputSink {
+        return .{
+            .context = self,
+            .writeFn = writeStderr,
+        };
+    }
+
+    fn writeStdout(context: *anyopaque, bytes: []const u8) void {
+        const self: *TestOutputCapture = @ptrCast(@alignCast(context));
+        self.stdout.appendSlice(std.testing.allocator, bytes) catch unreachable;
+    }
+
+    fn writeStderr(context: *anyopaque, bytes: []const u8) void {
+        const self: *TestOutputCapture = @ptrCast(@alignCast(context));
+        self.stderr.appendSlice(std.testing.allocator, bytes) catch unreachable;
+    }
+};
+
+fn setTestRuntime(environ_map: *std.process.Environ.Map) void {
+    runtime.set(.{
+        .allocator = std.testing.allocator,
+        .io = std.testing.io,
+        .environ_map = environ_map,
+    });
+}
+
+const OutputSinkState = struct {
+    stdout: ?runtime.OutputSink,
+    stderr: ?runtime.OutputSink,
+};
+
+fn installOutputCapture(capture: *TestOutputCapture) OutputSinkState {
+    return .{
+        .stdout = runtime.swapOutputSink(.stdout, capture.stdoutSink()),
+        .stderr = runtime.swapOutputSink(.stderr, capture.stderrSink()),
+    };
+}
+
+fn restoreOutputCapture(state: OutputSinkState) void {
+    _ = runtime.swapOutputSink(.stdout, state.stdout);
+    _ = runtime.swapOutputSink(.stderr, state.stderr);
+}
+
+test "Logger.log writes info output through runtime stdout sink" {
+    var environ_map = std.process.Environ.Map.init(std.testing.allocator);
+    defer environ_map.deinit();
+    setTestRuntime(&environ_map);
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous);
+
+    var log = Logger.init(.info);
+    log.enable_ansi = false;
+    log.log(.info, "captured");
+
+    try std.testing.expectEqualStrings("[INFO]\n    captured\n", capture.stdout.items);
+    try std.testing.expectEqual(@as(usize, 0), capture.stderr.items.len);
+}
+
+test "Logger.log writes warning output through runtime stderr sink" {
+    var environ_map = std.process.Environ.Map.init(std.testing.allocator);
+    defer environ_map.deinit();
+    setTestRuntime(&environ_map);
+
+    var capture = TestOutputCapture{};
+    defer capture.deinit(std.testing.allocator);
+    const previous = installOutputCapture(&capture);
+    defer restoreOutputCapture(previous);
+
+    var log = Logger.init(.info);
+    log.enable_ansi = false;
+    log.log(.warn, "careful");
+
+    try std.testing.expectEqualStrings("[WARN]\n    careful\n", capture.stderr.items);
+    try std.testing.expectEqual(@as(usize, 0), capture.stdout.items.len);
 }

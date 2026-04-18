@@ -12,6 +12,8 @@ pub const formatErrorWithContext = @import("error.zig").formatErrorWithContext;
 pub const logger = @import("logger.zig");
 pub const LogLevel = @import("logger.zig").LogLevel;
 pub const Logger = @import("logger.zig").Logger;
+pub const runtime = @import("runtime.zig");
+pub const Runtime = @import("runtime.zig").Runtime;
 
 pub const types = @import("types.zig");
 pub const ManagerType = @import("types.zig").ManagerType;

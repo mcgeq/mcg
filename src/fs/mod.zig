@@ -21,6 +21,6 @@ pub const commands = @import("commands.zig");
 ///
 /// Note:
 ///   Unknown subcommands result in an error message printed to stderr.
-pub fn handleCommand(cmd: []const u8, args: []const [:0]u8, dry_run: bool) !void {
+pub fn handleCommand(cmd: []const u8, args: []const [:0]const u8, dry_run: bool) !void {
     try commands.handleCommand(cmd, args, dry_run);
 }

@@ -13,7 +13,7 @@ const std = @import("std");
 ///   - Configuration Errors: ConfigParseFailed, ConfigReadFailed
 ///   - File System Errors: CreateDirFailed, CreateFileFailed, RemoveFailed, CopyFailed, MoveFailed, PathNotFound
 ///   - Validation Errors: InvalidPackageName, InvalidArgument
-///   - System Errors: IoError, CurrentDirFailed, LoggerInitFailed, CacheCorrupted
+///   - System Errors: IoError, CurrentDirFailed, LoggerInitFailed, CacheCorrupted, OutOfMemory
 pub const MgError = error{
     /// No supported package manager was detected in the current directory.
     /// This occurs when the project doesn't contain any recognized lock files.
@@ -50,6 +50,8 @@ pub const MgError = error{
     LoggerInitFailed,
     /// The cache file is corrupted or contains invalid data.
     CacheCorrupted,
+    /// Memory allocation failed while building command or runtime state.
+    OutOfMemory,
     /// An unknown subcommand was provided.
     UnknownSubcommand,
     /// A required subcommand was not provided.
@@ -75,7 +77,7 @@ pub const MgError = error{
 ///   defer file.close();
 ///   formatError(error.NoPackageManager, file.writer()) catch {};
 ///   ```
-pub fn formatError(err: MgError, writer: std.fs.File.Writer) void {
+pub fn formatError(err: MgError, writer: *std.Io.Writer) void {
     const msg = switch (err) {
         .NoPackageManager => "No supported package manager detected in current directory",
         .UnsupportedManager => "Unsupported package manager",
@@ -94,6 +96,7 @@ pub fn formatError(err: MgError, writer: std.fs.File.Writer) void {
         .PathNotFound => "Path not found",
         .LoggerInitFailed => "Failed to initialize logger",
         .CacheCorrupted => "Cache file is corrupted",
+        .OutOfMemory => "Out of memory",
         .UnknownSubcommand => "Unknown subcommand",
         .MissingSubcommand => "Missing subcommand",
         .UnknownOption => "Unknown option",
@@ -118,7 +121,7 @@ pub fn formatError(err: MgError, writer: std.fs.File.Writer) void {
 ///   formatErrorWithContext(error.CommandFailed, writer, "cargo add serde");
 ///   // Output: "Command failed: cargo add serde"
 /// ```
-pub fn formatErrorWithContext(err: MgError, writer: std.fs.File.Writer, context: []const u8) void {
+pub fn formatErrorWithContext(err: MgError, writer: *std.Io.Writer, context: []const u8) void {
     const prefix = switch (err) {
         .CommandFailed => "Command failed",
         .ManagerNotInstalled => "Manager not installed",
