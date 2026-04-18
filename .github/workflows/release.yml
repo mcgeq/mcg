@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to create or update, for example v0.1.0
+        description: Existing release tag to rebuild, for example v0.1.0
         required: true
         type: string
 
@@ -18,11 +18,12 @@ env:
   ZIG_VERSION: 0.16.0
 
 jobs:
-  ensure-release:
-    name: Ensure GitHub Release Exists
+  prepare:
+    name: Prepare Release Context
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
 
     steps:
       - name: Resolve release tag
@@ -34,17 +35,16 @@ jobs:
           else
             tag="${GITHUB_REF_NAME}"
           fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Validate release tag format
-        shell: bash
-        run: |
-          tag="${{ steps.resolve.outputs.tag }}"
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid release tag: $tag" >&2
             echo "Expected format: v0.1.0" >&2
             exit 1
           fi
+
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Checkout release tag
         uses: actions/checkout@v4
@@ -52,53 +52,61 @@ jobs:
           ref: ${{ steps.resolve.outputs.tag }}
           fetch-depth: 0
 
-      - name: Verify release tag exists
+      - name: Verify build.zig.zon version
         shell: bash
         run: |
-          tag="${{ steps.resolve.outputs.tag }}"
-          commit_sha="$(git rev-list -n 1 "$tag")"
-          if [ -z "$commit_sha" ]; then
-            echo "Release tag not found: $tag" >&2
+          expected="${{ steps.resolve.outputs.version }}"
+          actual="$(sed -n 's/.*\.version = "\([^"]*\)".*/\1/p' build.zig.zon | head -n 1)"
+
+          if [ -z "$actual" ]; then
+            echo "Unable to read version from build.zig.zon" >&2
             exit 1
           fi
-          echo "Using tag $tag at commit $commit_sha"
 
-      - name: Create release when missing
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          tag="${{ steps.resolve.outputs.tag }}"
-          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
-            echo "Release $tag already exists"
-            exit 0
+          if [ "$actual" != "$expected" ]; then
+            echo "Tag version ($expected) does not match build.zig.zon version ($actual)." >&2
+            exit 1
           fi
 
-          gh release create "$tag" \
-            --repo "$GH_REPO" \
-            --title "$tag" \
-            --generate-notes
+  build:
+    name: Build ${{ matrix.name }} Asset
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
 
-  build-linux:
-    name: Build Linux Asset
-    needs: ensure-release
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-latest
+            target: x86_64-linux
+            asset_suffix: linux-x86_64
+            exec_suffix: ""
+            archive_suffix: tar.gz
+          - name: macOS
+            runner: macos-latest
+            target: aarch64-macos
+            asset_suffix: macos-aarch64
+            exec_suffix: ""
+            archive_suffix: tar.gz
+          - name: Windows
+            runner: windows-latest
+            target: x86_64-windows
+            asset_suffix: windows-x86_64
+            exec_suffix: .exe
+            archive_suffix: zip
 
     env:
-      RELEASE_TAG: ${{ needs.ensure-release.outputs.tag }}
-      TARGET: x86_64-linux
-      ASSET_SUFFIX: linux-x86_64
-      EXEC_SUFFIX: ""
-      ARCHIVE_SUFFIX: tar.gz
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.ensure-release.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.tag }}
 
-      - name: Install Zig
+      - name: Install Zig on Linux
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           host="$(uname -m)-linux"
@@ -111,61 +119,8 @@ jobs:
           echo "$zig_root" >> "$GITHUB_PATH"
           "$zig_root/zig" version
 
-      - name: Build release binary
-        shell: bash
-        run: |
-          prefix="$RUNNER_TEMP/prefix-$TARGET"
-          zig build -Doptimize=ReleaseSafe -Dtarget="$TARGET" --prefix "$prefix"
-
-      - name: Package release assets
-        shell: bash
-        run: |
-          prefix="$RUNNER_TEMP/prefix-$TARGET"
-          mkdir -p dist
-
-          base_name="mg-$RELEASE_TAG-$ASSET_SUFFIX"
-          raw_asset="dist/$base_name"
-          archive_asset="dist/$base_name.$ARCHIVE_SUFFIX"
-          sha_asset="dist/$base_name.sha256.txt"
-
-          cp "$prefix/bin/mg$EXEC_SUFFIX" "$raw_asset"
-          tar -C dist -czf "$archive_asset" "$base_name"
-
-          hash="$(shasum -a 256 "$raw_asset" | awk '{print $1}')"
-          printf '%s *%s\n' "$hash" "$base_name" > "$sha_asset"
-
-      - name: Upload assets to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          gh release upload "$RELEASE_TAG" \
-            --repo "$GH_REPO" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX.$ARCHIVE_SUFFIX" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX.sha256.txt" \
-            --clobber
-
-  build-macos:
-    name: Build macOS Asset
-    needs: ensure-release
-    runs-on: macos-latest
-
-    env:
-      RELEASE_TAG: ${{ needs.ensure-release.outputs.tag }}
-      TARGET: aarch64-macos
-      ASSET_SUFFIX: macos-aarch64
-      EXEC_SUFFIX: ""
-      ARCHIVE_SUFFIX: tar.gz
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.ensure-release.outputs.tag }}
-
-      - name: Install Zig
+      - name: Install Zig on macOS
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           case "$(uname -m)" in
@@ -183,65 +138,9 @@ jobs:
           echo "$zig_root" >> "$GITHUB_PATH"
           "$zig_root/zig" version
 
-      - name: Build release binary
-        shell: bash
-        run: |
-          prefix="$RUNNER_TEMP/prefix-$TARGET"
-          zig build -Doptimize=ReleaseSafe -Dtarget="$TARGET" --prefix "$prefix"
-
-      - name: Package release assets
-        shell: bash
-        run: |
-          prefix="$RUNNER_TEMP/prefix-$TARGET"
-          mkdir -p dist
-
-          base_name="mg-$RELEASE_TAG-$ASSET_SUFFIX"
-          raw_asset="dist/$base_name"
-          archive_asset="dist/$base_name.$ARCHIVE_SUFFIX"
-          sha_asset="dist/$base_name.sha256.txt"
-
-          cp "$prefix/bin/mg$EXEC_SUFFIX" "$raw_asset"
-          tar -C dist -czf "$archive_asset" "$base_name"
-
-          hash="$(shasum -a 256 "$raw_asset" | awk '{print $1}')"
-          printf '%s *%s\n' "$hash" "$base_name" > "$sha_asset"
-
-      - name: Upload assets to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          gh release upload "$RELEASE_TAG" \
-            --repo "$GH_REPO" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX.$ARCHIVE_SUFFIX" \
-            "dist/mg-$RELEASE_TAG-$ASSET_SUFFIX.sha256.txt" \
-            --clobber
-
-  build-windows:
-    name: Build Windows Asset
-    needs: ensure-release
-    runs-on: windows-latest
-
-    defaults:
-      run:
+      - name: Install Zig on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
-
-    env:
-      RELEASE_TAG: ${{ needs.ensure-release.outputs.tag }}
-      TARGET: x86_64-windows
-      ASSET_SUFFIX: windows-x86_64
-      EXEC_SUFFIX: .exe
-      ARCHIVE_SUFFIX: zip
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.ensure-release.outputs.tag }}
-
-      - name: Install Zig
         run: |
           $archive = "zig-x86_64-windows-$env:ZIG_VERSION.zip"
           $url = "https://ziglang.org/download/$env:ZIG_VERSION/$archive"
@@ -258,36 +157,82 @@ jobs:
           $zig_bin = Join-Path $zig_root "zig.exe"
           & $zig_bin version
 
-      - name: Build release binary
+      - name: Build release binary on Linux/macOS
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          $prefix = Join-Path $env:RUNNER_TEMP "prefix-$env:TARGET"
-          $target_arg = "-Dtarget=$($env:TARGET)"
+          prefix="$RUNNER_TEMP/prefix-${{ matrix.target }}"
+          zig build -Doptimize=ReleaseSafe -Dtarget="${{ matrix.target }}" --prefix "$prefix"
+
+      - name: Build release binary on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:RUNNER_TEMP "prefix-${{ matrix.target }}"
+          $target_arg = "-Dtarget=${{ matrix.target }}"
           & zig build -Doptimize=ReleaseSafe $target_arg --prefix $prefix
 
-      - name: Package release assets
+      - name: Package release assets on Linux/macOS
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          $prefix = Join-Path $env:RUNNER_TEMP "prefix-$env:TARGET"
+          prefix="$RUNNER_TEMP/prefix-${{ matrix.target }}"
+          mkdir -p dist
+
+          base_name="mg-$RELEASE_TAG-${{ matrix.asset_suffix }}"
+          raw_asset="dist/$base_name${{ matrix.exec_suffix }}"
+          archive_asset="dist/$base_name.${{ matrix.archive_suffix }}"
+          sha_asset="dist/$base_name.sha256.txt"
+
+          cp "$prefix/bin/mg${{ matrix.exec_suffix }}" "$raw_asset"
+          tar -C dist -czf "$archive_asset" "$(basename "$raw_asset")"
+
+          hash="$(shasum -a 256 "$raw_asset" | awk '{print $1}')"
+          printf '%s *%s\n' "$hash" "$(basename "$raw_asset")" > "$sha_asset"
+
+      - name: Package release assets on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $prefix = Join-Path $env:RUNNER_TEMP "prefix-${{ matrix.target }}"
           $asset_dir = Join-Path $PWD "dist"
-          $base_name = "mg-$env:RELEASE_TAG-$env:ASSET_SUFFIX"
-          $raw_asset = Join-Path $asset_dir "$base_name$env:EXEC_SUFFIX"
-          $archive_asset = Join-Path $asset_dir "$base_name.$env:ARCHIVE_SUFFIX"
+          $base_name = "mg-$env:RELEASE_TAG-${{ matrix.asset_suffix }}"
+          $raw_asset = Join-Path $asset_dir "$base_name${{ matrix.exec_suffix }}"
+          $archive_asset = Join-Path $asset_dir "$base_name.${{ matrix.archive_suffix }}"
           $sha_asset = Join-Path $asset_dir "$base_name.sha256.txt"
 
           New-Item -ItemType Directory -Path $asset_dir -Force | Out-Null
-          Copy-Item -LiteralPath (Join-Path $prefix "bin\mg.exe") -Destination $raw_asset -Force
+          Copy-Item -LiteralPath (Join-Path $prefix "bin\\mg.exe") -Destination $raw_asset -Force
           Compress-Archive -Path $raw_asset -DestinationPath $archive_asset -Force
 
           $hash = (Get-FileHash -LiteralPath $raw_asset -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash *$base_name$env:EXEC_SUFFIX" | Out-File -FilePath $sha_asset -Encoding ascii
+          "$hash *$(Split-Path -Leaf $raw_asset)" | Out-File -FilePath $sha_asset -Encoding ascii
 
-      - name: Upload assets to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release upload $env:RELEASE_TAG `
-            --repo $env:GH_REPO `
-            "dist/mg-$env:RELEASE_TAG-$env:ASSET_SUFFIX$env:EXEC_SUFFIX" `
-            "dist/mg-$env:RELEASE_TAG-$env:ASSET_SUFFIX.$env:ARCHIVE_SUFFIX" `
-            "dist/mg-$env:RELEASE_TAG-$env:ASSET_SUFFIX.sha256.txt" `
-            --clobber
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.asset_suffix }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          generate_release_notes: true
+          files: release-assets/*
