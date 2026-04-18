@@ -2,5 +2,4 @@
 /zig-out/
 /.zig-cache/
 nul
-docs/zig-0.16-upgrade-plan.md
 

@@ -46,6 +46,23 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Verify release tag exists
+        shell: bash
+        run: |
+          tag="${{ steps.resolve.outputs.tag }}"
+          commit_sha="$(git rev-list -n 1 "$tag")"
+          if [ -z "$commit_sha" ]; then
+            echo "Release tag not found: $tag" >&2
+            exit 1
+          fi
+          echo "Using tag $tag at commit $commit_sha"
+
       - name: Create release when missing
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,8 +78,7 @@ jobs:
           gh release create "$tag" \
             --repo "$GH_REPO" \
             --title "$tag" \
-            --generate-notes \
-            --target "$GITHUB_SHA"
+            --generate-notes
 
   build-linux:
     name: Build Linux Asset
@@ -79,6 +95,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.ensure-release.outputs.tag }}
 
       - name: Install Zig
         shell: bash
@@ -144,6 +162,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.ensure-release.outputs.tag }}
 
       - name: Install Zig
         shell: bash
@@ -218,6 +238,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.ensure-release.outputs.tag }}
 
       - name: Install Zig
         run: |
