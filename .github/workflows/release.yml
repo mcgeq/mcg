@@ -239,7 +239,8 @@ jobs:
       - name: Build release binary
         run: |
           $prefix = Join-Path $env:RUNNER_TEMP "prefix-$env:TARGET"
-          zig build -Doptimize=ReleaseSafe -Dtarget=$env:TARGET --prefix $prefix
+          $target_arg = "-Dtarget=$($env:TARGET)"
+          & zig build -Doptimize=ReleaseSafe $target_arg --prefix $prefix
 
       - name: Package release assets
         run: |
