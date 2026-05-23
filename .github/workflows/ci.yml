@@ -1,0 +1,183 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+    - main
+
+  pull_request:
+    branches:
+    - main
+
+env:
+  VCPKG_COMMIT: "eba7c6a894fce24146af4fdf161fef8e90dd6be3"
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: sudo apt-get update -q && sudo apt-get install clang-format-14 -q -y
+
+    - uses: actions/setup-python@v5
+      with: { python-version: "3.12" }
+
+    - name: Install codespell
+      run: pip3 install codespell
+
+    - name: Lint
+      run: cmake -D FORMAT_COMMAND=clang-format-14 -P cmake/lint.cmake
+
+    - name: Validate presets
+      run: cmake --list-presets
+
+    - name: Spell check
+      if: always()
+      run: cmake -P cmake/spell.cmake
+
+    - name: Template initialization smoke test
+      run: python tools/test_template_init.py
+
+  coverage:
+    needs: [lint]
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install LCov
+      run: sudo apt-get update -q
+        && sudo apt-get install lcov -q -y
+
+    - name: Install vcpkg
+      uses: friendlyanon/setup-vcpkg@v1
+      with: { committish: "${{ env.VCPKG_COMMIT }}" }
+
+    - name: Configure
+      run: cmake --preset=coverage
+
+    - name: Build
+      run: cmake --build build/coverage -j 2
+
+    - name: Test
+      working-directory: build/coverage
+      run: ctest --output-on-failure --no-tests=error -j 2
+
+    - name: Process coverage info
+      run: cmake --build build/coverage -t coverage
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          build/coverage/coverage.info
+          build/coverage/coverage_html
+
+  sanitize:
+    needs: [lint]
+
+    runs-on: ubuntu-22.04
+
+    env: { CXX: clang++-14 }
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install clang
+      run: sudo apt-get update -q && sudo apt-get install clang-14 -q -y
+
+    - name: Install vcpkg
+      uses: friendlyanon/setup-vcpkg@v1
+      with: { committish: "${{ env.VCPKG_COMMIT }}" }
+
+    - name: Configure
+      run: cmake --preset=asan
+
+    - name: Build
+      run: cmake --build build/asan -j 2
+
+    - name: Test
+      working-directory: build/asan
+      env:
+        ASAN_OPTIONS: "strict_string_checks=1:\
+          detect_stack_use_after_return=1:\
+          check_initialization_order=1:\
+          strict_init_order=1:\
+          detect_leaks=1:\
+          halt_on_error=1"
+        UBSAN_OPTIONS: "print_stacktrace=1:\
+          halt_on_error=1"
+      run: ctest --output-on-failure --no-tests=error -j 2
+
+  modules:
+    needs: [lint]
+
+    runs-on: ubuntu-22.04
+
+    env: { CXX: clang++-14 }
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install clang and ninja
+      run: sudo apt-get update -q && sudo apt-get install clang-14 ninja-build -q -y
+
+    - name: Install vcpkg
+      uses: friendlyanon/setup-vcpkg@v1
+      with: { committish: "${{ env.VCPKG_COMMIT }}" }
+
+    - name: Configure
+      run: cmake --preset=modules-dev-debug
+
+    - name: Build
+      run: cmake --build build/modules-dev-debug-clang -j 2
+
+    - name: Test
+      run: ctest --test-dir build/modules-dev-debug-clang --output-on-failure --no-tests=error -j 2
+
+  test:
+    needs: [lint]
+
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-22.04
+          preset: ci-linux
+        - os: macos-14
+          preset: ci-macos
+        - os: windows-2022
+          preset: ci-windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install static analyzers
+      if: matrix.os == 'ubuntu-22.04'
+      run: >-
+        sudo apt-get install clang-tidy-14 cppcheck -y -q
+
+        sudo update-alternatives --install
+        /usr/bin/clang-tidy clang-tidy
+        /usr/bin/clang-tidy-14 140
+
+    - name: Install vcpkg
+      uses: friendlyanon/setup-vcpkg@v1
+      with: { committish: "${{ env.VCPKG_COMMIT }}" }
+
+    - name: Configure
+      run: cmake --preset=${{ matrix.preset }}
+
+    - name: Build
+      run: cmake --build build/${{ matrix.preset }} --config Release -j 2
+
+    - name: Install
+      run: cmake --install build/${{ matrix.preset }} --config Release --prefix prefix
+
+    - name: Test
+      run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure --no-tests=error -C Release -j 2

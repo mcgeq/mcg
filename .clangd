@@ -1,0 +1,12 @@
+CompileFlags:
+  Add:
+    - -std=c++23
+    - -Iinclude
+    - -Isrc
+---
+If:
+  PathMatch:
+    - src/main_modules.cpp
+    - source/modules/.*
+CompileFlags:
+  CompilationDatabase: build/modules-debug-clang

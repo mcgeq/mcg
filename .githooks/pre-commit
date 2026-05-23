@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel)
+
+if command -v python3 >/dev/null 2>&1; then
+    exec python3 "$ROOT/tools/pre_commit.py"
+fi
+
+if command -v python >/dev/null 2>&1; then
+    exec python "$ROOT/tools/pre_commit.py"
+fi
+
+if command -v py >/dev/null 2>&1; then
+    exec py -3 "$ROOT/tools/pre_commit.py"
+fi
+
+printf '%s\n' "error: Python 3 interpreter not found. Install Python and retry." >&2
+exit 1

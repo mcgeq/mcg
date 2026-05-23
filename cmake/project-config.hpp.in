@@ -1,0 +1,12 @@
+#pragma once
+
+#include <string_view>
+
+namespace @MG_LIBRARY_NAMESPACE@
+{
+inline constexpr std::string_view k_project_name {"@PROJECT_NAME@"};
+inline constexpr std::string_view k_project_version {"@PROJECT_VERSION@"};
+inline constexpr int k_project_version_major {@PROJECT_VERSION_MAJOR@};
+inline constexpr int k_project_version_minor {@PROJECT_VERSION_MINOR@};
+inline constexpr int k_project_version_patch {@PROJECT_VERSION_PATCH@};
+}  // namespace @MG_LIBRARY_NAMESPACE@

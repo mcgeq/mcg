@@ -1,0 +1,6 @@
+import @mg_module_name@;
+
+auto main() -> int
+{
+  return @MG_LIBRARY_NAMESPACE@::project_name().empty() ? 1 : 0;
+}

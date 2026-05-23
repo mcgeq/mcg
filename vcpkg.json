@@ -1,0 +1,31 @@
+{
+  "name": "mg",
+  "version-semver": "0.1.0",
+  "dependencies": [],
+  "default-features": [],
+  "features": {
+    "test": {
+      "description": "Dependencies for testing",
+      "dependencies": [
+        {
+          "name": "catch2",
+          "version>=": "3.7.0"
+        }
+      ]
+    },
+    "benchmark": {
+      "description": "Dependencies for benchmark targets",
+      "dependencies": [
+        {
+          "name": "benchmark",
+          "version>=": "1.9.1"
+        }
+      ]
+    },
+    "fuzz": {
+      "description": "Dependencies for fuzzing targets",
+      "dependencies": []
+    }
+  },
+  "builtin-baseline": "eba7c6a894fce24146af4fdf161fef8e90dd6be3"
+}

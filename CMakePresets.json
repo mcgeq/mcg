@@ -1,0 +1,759 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base-single-config",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "base-multi-config",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF"
+      }
+    },
+    {
+      "name": "developer-mode",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_DEVELOPER_MODE": "ON",
+        "VCPKG_MANIFEST_FEATURES": "test"
+      }
+    },
+    {
+      "name": "developer-mode-bench",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_DEVELOPER_MODE": "ON",
+        "mg_BUILD_BENCHMARKS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "test;benchmark"
+      }
+    },
+    {
+      "name": "developer-mode-fuzz",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_DEVELOPER_MODE": "ON",
+        "mg_BUILD_FUZZ_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "test;fuzz"
+      }
+    },
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "vcpkg-mingw",
+      "hidden": true,
+      "inherits": ["vcpkg"],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic"
+      }
+    },
+    {
+      "name": "analyzers-recommended",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_CPPCHECK": "cppcheck;--inline-suppr",
+        "mg_ENABLE_CLANG_TIDY": "ON",
+        "mg_CLANG_TIDY_PROFILE": "recommended"
+      }
+    },
+    {
+      "name": "analyzers-recommended-gated",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_ENABLE_CLANG_TIDY": "ON",
+        "mg_CLANG_TIDY_PROFILE": "recommended",
+        "mg_CLANG_TIDY_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "analyzers-strict",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_ENABLE_CLANG_TIDY": "ON",
+        "mg_CLANG_TIDY_PROFILE": "strict",
+        "mg_CLANG_TIDY_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "modules-enabled",
+      "hidden": true,
+      "cacheVariables": {
+        "mg_ENABLE_CXX_MODULES": "ON"
+      }
+    },
+    {
+      "name": "default-debug",
+      "displayName": "Default Debug",
+      "binaryDir": "${sourceDir}/build/default-debug-gcc",
+      "inherits": ["base-single-config"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "default-release",
+      "displayName": "Default Release",
+      "binaryDir": "${sourceDir}/build/default-release-gcc",
+      "inherits": ["base-single-config"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "msvc-debug",
+      "displayName": "MSVC Debug",
+      "binaryDir": "${sourceDir}/build/msvc-debug",
+      "inherits": ["base-multi-config"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "msvc-release",
+      "displayName": "MSVC Release",
+      "binaryDir": "${sourceDir}/build/msvc-release",
+      "inherits": ["base-multi-config"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "modules-debug",
+      "displayName": "Clang Ninja Debug With C++23 Modules",
+      "binaryDir": "${sourceDir}/build/modules-debug-clang",
+      "inherits": ["base-single-config", "modules-enabled"],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "modules-dev-debug",
+      "displayName": "Clang Ninja Developer Debug With C++23 Modules",
+      "binaryDir": "${sourceDir}/build/modules-dev-debug-clang",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg", "modules-enabled"],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "msvc-modules-debug",
+      "displayName": "MSVC Debug With C++23 Modules",
+      "binaryDir": "${sourceDir}/build/msvc-modules-debug",
+      "inherits": ["base-multi-config", "modules-enabled"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "msvc-dev-debug",
+      "displayName": "MSVC Developer Debug",
+      "binaryDir": "${sourceDir}/build/msvc-dev-debug",
+      "inherits": ["base-multi-config", "developer-mode", "vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "msvc-dev-release",
+      "displayName": "MSVC Developer Release",
+      "binaryDir": "${sourceDir}/build/msvc-dev-release",
+      "inherits": ["base-multi-config", "developer-mode", "vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64"
+    },
+    {
+      "name": "dev-debug",
+      "displayName": "Developer Debug",
+      "binaryDir": "${sourceDir}/build/dev-debug",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "dev-release",
+      "displayName": "Developer Release",
+      "binaryDir": "${sourceDir}/build/dev-release",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "Address Sanitizer",
+      "binaryDir": "${sourceDir}/build/asan",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++",
+        "mg_ENABLE_SANITIZERS": "ON"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "binaryDir": "${sourceDir}/build/coverage",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++",
+        "ENABLE_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "bench-debug",
+      "displayName": "Developer Debug With Benchmarks",
+      "binaryDir": "${sourceDir}/build/bench-debug",
+      "inherits": ["base-single-config", "developer-mode-bench", "vcpkg-mingw"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "fuzz-debug",
+      "displayName": "Developer Debug With Fuzz Targets",
+      "binaryDir": "${sourceDir}/build/fuzz-debug",
+      "inherits": ["base-single-config", "developer-mode-fuzz", "vcpkg"],
+      "cacheVariables": {
+        "BUILD_TESTING": "OFF",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
+        "VCPKG_MANIFEST_FEATURES": "fuzz",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "ci-linux",
+      "binaryDir": "${sourceDir}/build/ci-linux",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw", "analyzers-recommended-gated"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "tidy-debug",
+      "displayName": "Developer Debug With Recommended Clang-Tidy",
+      "binaryDir": "${sourceDir}/build/tidy-debug",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw", "analyzers-recommended"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "tidy-strict",
+      "displayName": "Developer Debug With Strict Clang-Tidy",
+      "binaryDir": "${sourceDir}/build/tidy-strict",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg-mingw", "analyzers-strict"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "ci-macos",
+      "binaryDir": "${sourceDir}/build/ci-macos",
+      "inherits": ["base-single-config", "developer-mode", "vcpkg"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CATCH_DISCOVER_TESTS_DISCOVERY_MODE": "PRE_TEST"
+      }
+    },
+    {
+      "name": "ci-windows",
+      "binaryDir": "${sourceDir}/build/ci-windows",
+      "inherits": ["base-multi-config", "developer-mode", "vcpkg"],
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default-debug",
+      "configurePreset": "default-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "default-release",
+      "configurePreset": "default-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "dev-debug",
+      "configurePreset": "dev-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-debug",
+      "configurePreset": "msvc-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-release",
+      "configurePreset": "msvc-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "modules-debug",
+      "configurePreset": "modules-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "modules-dev-debug",
+      "configurePreset": "modules-dev-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-modules-debug",
+      "configurePreset": "msvc-modules-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-dev-debug",
+      "configurePreset": "msvc-dev-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc-dev-release",
+      "configurePreset": "msvc-dev-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "dev-release",
+      "configurePreset": "dev-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "configuration": "Debug"
+    },
+    {
+      "name": "bench-debug",
+      "configurePreset": "bench-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "fuzz-debug",
+      "configurePreset": "fuzz-debug",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "tidy-debug",
+      "configurePreset": "tidy-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "tidy-strict",
+      "configurePreset": "tidy-strict",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev-debug",
+      "configurePreset": "dev-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "msvc-dev-debug",
+      "configurePreset": "msvc-dev-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "msvc-dev-release",
+      "configurePreset": "msvc-dev-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "dev-release",
+      "configurePreset": "dev-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "bench-debug",
+      "configurePreset": "bench-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "modules-dev-debug",
+      "configurePreset": "modules-dev-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "fuzz-debug",
+      "configurePreset": "fuzz-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "tidy-debug",
+      "configurePreset": "tidy-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "tidy-strict",
+      "configurePreset": "tidy-strict",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "default-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "default-debug"
+        },
+        {
+          "type": "build",
+          "name": "default-debug"
+        }
+      ]
+    },
+    {
+      "name": "default-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "default-release"
+        },
+        {
+          "type": "build",
+          "name": "default-release"
+        }
+      ]
+    },
+    {
+      "name": "msvc-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "msvc-debug"
+        },
+        {
+          "type": "build",
+          "name": "msvc-debug"
+        }
+      ]
+    },
+    {
+      "name": "msvc-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "msvc-release"
+        },
+        {
+          "type": "build",
+          "name": "msvc-release"
+        }
+      ]
+    },
+    {
+      "name": "modules-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "modules-debug"
+        },
+        {
+          "type": "build",
+          "name": "modules-debug"
+        }
+      ]
+    },
+    {
+      "name": "modules-dev-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "modules-dev-debug"
+        },
+        {
+          "type": "build",
+          "name": "modules-dev-debug"
+        },
+        {
+          "type": "test",
+          "name": "modules-dev-debug"
+        }
+      ]
+    },
+    {
+      "name": "msvc-modules-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "msvc-modules-debug"
+        },
+        {
+          "type": "build",
+          "name": "msvc-modules-debug"
+        }
+      ]
+    },
+    {
+      "name": "dev-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-debug"
+        },
+        {
+          "type": "build",
+          "name": "dev-debug"
+        },
+        {
+          "type": "test",
+          "name": "dev-debug"
+        }
+      ]
+    },
+    {
+      "name": "msvc-dev-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "msvc-dev-debug"
+        },
+        {
+          "type": "build",
+          "name": "msvc-dev-debug"
+        },
+        {
+          "type": "test",
+          "name": "msvc-dev-debug"
+        }
+      ]
+    },
+    {
+      "name": "msvc-dev-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "msvc-dev-release"
+        },
+        {
+          "type": "build",
+          "name": "msvc-dev-release"
+        },
+        {
+          "type": "test",
+          "name": "msvc-dev-release"
+        }
+      ]
+    },
+    {
+      "name": "dev-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev-release"
+        },
+        {
+          "type": "build",
+          "name": "dev-release"
+        },
+        {
+          "type": "test",
+          "name": "dev-release"
+        }
+      ]
+    },
+    {
+      "name": "asan",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "asan"
+        },
+        {
+          "type": "build",
+          "name": "asan"
+        },
+        {
+          "type": "test",
+          "name": "asan"
+        }
+      ]
+    },
+    {
+      "name": "coverage",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "coverage"
+        },
+        {
+          "type": "build",
+          "name": "coverage"
+        },
+        {
+          "type": "test",
+          "name": "coverage"
+        }
+      ]
+    },
+    {
+      "name": "bench-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "bench-debug"
+        },
+        {
+          "type": "build",
+          "name": "bench-debug"
+        }
+      ]
+    },
+    {
+      "name": "fuzz-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "fuzz-debug"
+        },
+        {
+          "type": "build",
+          "name": "fuzz-debug"
+        }
+      ]
+    },
+    {
+      "name": "tidy-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "tidy-debug"
+        },
+        {
+          "type": "build",
+          "name": "tidy-debug"
+        },
+        {
+          "type": "test",
+          "name": "tidy-debug"
+        }
+      ]
+    },
+    {
+      "name": "tidy-strict",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "tidy-strict"
+        },
+        {
+          "type": "build",
+          "name": "tidy-strict"
+        },
+        {
+          "type": "test",
+          "name": "tidy-strict"
+        }
+      ]
+    }
+  ]
+}

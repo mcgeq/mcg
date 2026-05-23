@@ -1,0 +1,6 @@
+#include <@MG_INCLUDE_DIR_NAME@/@MG_LIBRARY_BASENAME@.hpp>
+
+auto main() -> int
+{
+  return @MG_LIBRARY_NAMESPACE@::project_name().empty() ? 1 : 0;
+}
