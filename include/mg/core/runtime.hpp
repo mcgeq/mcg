@@ -22,11 +22,11 @@ struct Runtime
 };
 
 void set_runtime(Runtime runtime);
-[[nodiscard]] auto runtime_initialized() noexcept -> bool;
-[[nodiscard]] auto current_runtime() -> Runtime&;
-[[nodiscard]] auto get_fs_cwd() -> std::optional<std::filesystem::path>;
-[[nodiscard]] auto swap_fs_cwd(std::optional<std::filesystem::path> path)
-    -> std::optional<std::filesystem::path>;
+[[nodiscard]] bool runtime_initialized() noexcept;
+[[nodiscard]] Runtime& current_runtime();
+[[nodiscard]] std::optional<std::filesystem::path> get_fs_cwd();
+[[nodiscard]] std::optional<std::filesystem::path> swap_fs_cwd(
+    std::optional<std::filesystem::path> path);
 void write_stdout(std::string_view bytes);
 void write_stderr(std::string_view bytes);
 }  // namespace mg

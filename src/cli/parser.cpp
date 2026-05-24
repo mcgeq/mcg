@@ -1,13 +1,12 @@
-#include <mg/cli/parser.hpp>
+#include <filesystem>
+#include <optional>
 
 #include <mg/cli/help.hpp>
+#include <mg/cli/parser.hpp>
 #include <mg/core/logger.hpp>
 #include <mg/core/runtime.hpp>
 #include <mg/fs/commands.hpp>
 #include <mg/pkgm/registry.hpp>
-
-#include <filesystem>
-#include <optional>
 
 namespace mg::cli
 {
@@ -26,8 +25,8 @@ struct CwdOptionResult
   std::string_view value {};
 };
 
-[[nodiscard]] auto parse_cwd_option(std::span<const std::string_view> args,
-                                    std::size_t& index) -> CwdOptionResult
+[[nodiscard]] CwdOptionResult parse_cwd_option(
+    std::span<const std::string_view> args, std::size_t& index)
 {
   const auto arg = args[index];
   if (arg == "--cwd" || arg == "-C") {
@@ -47,7 +46,7 @@ struct CwdOptionResult
 }
 }  // namespace
 
-auto parse_options(std::span<const std::string_view> args) noexcept -> Options
+Options parse_options(std::span<const std::string_view> args) noexcept
 {
   auto opts = Options {};
   for (const auto arg : args) {
@@ -60,7 +59,7 @@ auto parse_options(std::span<const std::string_view> args) noexcept -> Options
   return opts;
 }
 
-auto parse(std::span<const std::string_view> args) -> ParseResult
+ParseResult parse(std::span<const std::string_view> args)
 {
   auto index = std::size_t {1};
   auto opts = Options {};
@@ -128,10 +127,8 @@ auto parse(std::span<const std::string_view> args) -> ParseResult
       }
 
       const auto previous_cwd = swap_fs_cwd(cwd);
-      const auto fs_result = fs::handle_command(
-          fs_arg,
-          args.subspan(index + 1),
-          opts.dry_run);
+      const auto fs_result =
+          fs::handle_command(fs_arg, args.subspan(index + 1), opts.dry_run);
       (void)swap_fs_cwd(previous_cwd);
       if (!fs_result) {
         return ParseResult::none;

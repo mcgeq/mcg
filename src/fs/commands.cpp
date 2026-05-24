@@ -1,16 +1,15 @@
-#include <mg/fs/commands.hpp>
+#include <vector>
 
 #include <mg/core/logger.hpp>
 #include <mg/core/types.hpp>
+#include <mg/fs/commands.hpp>
 #include <mg/fs/core.hpp>
-
-#include <vector>
 
 namespace mg::fs
 {
 namespace
 {
-[[nodiscard]] auto path_looks_like_directory(std::string_view path) noexcept -> bool
+[[nodiscard]] bool path_looks_like_directory(std::string_view path) noexcept
 {
   return !path.empty() && (path.back() == '/' || path.back() == '\\');
 }
@@ -36,8 +35,8 @@ struct ParsedCopyArgs
   std::size_t extra_positionals {0};
 };
 
-[[nodiscard]] auto parse_create_args(std::span<const std::string_view> args)
-    -> ParsedCreateArgs
+[[nodiscard]] ParsedCreateArgs parse_create_args(
+    std::span<const std::string_view> args)
 {
   auto parsed = ParsedCreateArgs {};
   for (const auto arg : args) {
@@ -54,8 +53,8 @@ struct ParsedCopyArgs
   return parsed;
 }
 
-[[nodiscard]] auto parse_remove_args(std::span<const std::string_view> args)
-    -> ParsedRemoveArgs
+[[nodiscard]] ParsedRemoveArgs parse_remove_args(
+    std::span<const std::string_view> args)
 {
   auto parsed = ParsedRemoveArgs {};
   for (const auto arg : args) {
@@ -70,8 +69,8 @@ struct ParsedCopyArgs
   return parsed;
 }
 
-[[nodiscard]] auto parse_copy_args(std::span<const std::string_view> args)
-    -> ParsedCopyArgs
+[[nodiscard]] ParsedCopyArgs parse_copy_args(
+    std::span<const std::string_view> args)
 {
   auto parsed = ParsedCopyArgs {};
   for (const auto arg : args) {
@@ -90,8 +89,8 @@ struct ParsedCopyArgs
   return parsed;
 }
 
-[[nodiscard]] auto handle_create(std::span<const std::string_view> args,
-                                 bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_create(
+    std::span<const std::string_view> args, bool dry_run)
 {
   const auto parsed = parse_create_args(args);
   if (parsed.paths.empty()) {
@@ -101,16 +100,18 @@ struct ParsedCopyArgs
 
   for (const auto path : parsed.paths) {
     const auto is_dir = parsed.force_dir || path_looks_like_directory(path);
-    if (auto result = fs_create_extended(path, is_dir, parsed.recursive, dry_run);
-        !result) {
+    if (auto result =
+            fs_create_extended(path, is_dir, parsed.recursive, dry_run);
+        !result)
+    {
       return result;
     }
   }
   return {};
 }
 
-[[nodiscard]] auto handle_remove(std::span<const std::string_view> args,
-                                 bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_remove(
+    std::span<const std::string_view> args, bool dry_run)
 {
   const auto parsed = parse_remove_args(args);
   if (parsed.paths.empty()) {
@@ -129,8 +130,8 @@ struct ParsedCopyArgs
   return {};
 }
 
-[[nodiscard]] auto handle_copy(std::span<const std::string_view> args,
-                               bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_copy(
+    std::span<const std::string_view> args, bool dry_run)
 {
   const auto parsed = parse_copy_args(args);
   if (!parsed.src || !parsed.dst || parsed.extra_positionals != 0) {
@@ -140,8 +141,8 @@ struct ParsedCopyArgs
   return fs_copy_extended(*parsed.src, *parsed.dst, parsed.recursive, dry_run);
 }
 
-[[nodiscard]] auto handle_move(std::span<const std::string_view> args,
-                               bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_move(
+    std::span<const std::string_view> args, bool dry_run)
 {
   if (args.size() != 2) {
     log_info("Usage: mg fs move <src> <dst>");
@@ -150,8 +151,8 @@ struct ParsedCopyArgs
   return fs_move(args[0], args[1], dry_run);
 }
 
-[[nodiscard]] auto handle_list(std::span<const std::string_view> args,
-                               bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_list(
+    std::span<const std::string_view> args, bool dry_run)
 {
   if (args.size() > 1) {
     log_info("Usage: mg fs list [path]");
@@ -162,8 +163,8 @@ struct ParsedCopyArgs
                                  : fs_list(path, dry_run);
 }
 
-[[nodiscard]] auto handle_read(std::span<const std::string_view> args,
-                               bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_read(
+    std::span<const std::string_view> args, bool dry_run)
 {
   if (args.size() != 1) {
     log_info("Usage: mg fs read <path>");
@@ -172,8 +173,8 @@ struct ParsedCopyArgs
   return fs_read(args[0], dry_run);
 }
 
-[[nodiscard]] auto handle_write(std::span<const std::string_view> args,
-                                bool dry_run) -> std::expected<void, MgError>
+[[nodiscard]] std::expected<void, MgError> handle_write(
+    std::span<const std::string_view> args, bool dry_run)
 {
   if (args.size() != 2) {
     log_info("Usage: mg fs write <path> <content>");
@@ -183,9 +184,8 @@ struct ParsedCopyArgs
 }
 }  // namespace
 
-auto handle_command(std::string_view cmd,
-                    std::span<const std::string_view> args,
-                    bool dry_run) -> std::expected<void, MgError>
+std::expected<void, MgError> handle_command(
+    std::string_view cmd, std::span<const std::string_view> args, bool dry_run)
 {
   if (cmd == "create" || cmd == "c" || cmd == "touch") {
     return handle_create(args, dry_run);

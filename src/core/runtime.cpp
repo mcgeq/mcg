@@ -1,7 +1,7 @@
-#include <mg/core/runtime.hpp>
-
 #include <iostream>
 #include <stdexcept>
+
+#include <mg/core/runtime.hpp>
 
 namespace mg
 {
@@ -9,7 +9,7 @@ namespace
 {
 auto global_runtime = std::optional<Runtime> {};
 
-[[nodiscard]] auto stream_for(OutputTarget target) -> std::ostream&
+[[nodiscard]] std::ostream& stream_for(OutputTarget target)
 {
   auto& runtime = current_runtime();
   if (target == OutputTarget::stdout_stream) {
@@ -35,12 +35,12 @@ void set_runtime(Runtime runtime)
   global_runtime = std::move(runtime);
 }
 
-auto runtime_initialized() noexcept -> bool
+bool runtime_initialized() noexcept
 {
   return global_runtime.has_value();
 }
 
-auto current_runtime() -> Runtime&
+Runtime& current_runtime()
 {
   if (!global_runtime) {
     global_runtime = Runtime {
@@ -52,13 +52,13 @@ auto current_runtime() -> Runtime&
   return *global_runtime;
 }
 
-auto get_fs_cwd() -> std::optional<std::filesystem::path>
+std::optional<std::filesystem::path> get_fs_cwd()
 {
   return current_runtime().fs_cwd;
 }
 
-auto swap_fs_cwd(std::optional<std::filesystem::path> path)
-    -> std::optional<std::filesystem::path>
+std::optional<std::filesystem::path> swap_fs_cwd(
+    std::optional<std::filesystem::path> path)
 {
   auto& runtime = current_runtime();
   auto previous = runtime.fs_cwd;

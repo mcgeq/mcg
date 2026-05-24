@@ -1,13 +1,13 @@
 #pragma once
 
 #include <expected>
-#include <mg/core/error.hpp>
-
 #include <span>
 #include <string_view>
 
+#include <mg/core/error.hpp>
+
 namespace mg
 {
-[[nodiscard]] auto run(std::span<const std::string_view> args)
-    -> std::expected<void, MgError>;
+[[nodiscard]] std::expected<void, MgError> run(
+    std::span<const std::string_view> args);
 }  // namespace mg

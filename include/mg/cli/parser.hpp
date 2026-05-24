@@ -1,9 +1,9 @@
 #pragma once
 
-#include <mg/core/types.hpp>
-
 #include <span>
 #include <string_view>
+
+#include <mg/core/types.hpp>
 
 namespace mg::cli
 {
@@ -21,7 +21,7 @@ struct Options
   bool dry_run {false};
 };
 
-[[nodiscard]] auto parse_options(std::span<const std::string_view> args) noexcept
-    -> Options;
-[[nodiscard]] auto parse(std::span<const std::string_view> args) -> ParseResult;
+[[nodiscard]] Options parse_options(
+    std::span<const std::string_view> args) noexcept;
+[[nodiscard]] ParseResult parse(std::span<const std::string_view> args);
 }  // namespace mg::cli

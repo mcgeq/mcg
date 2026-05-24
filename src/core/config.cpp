@@ -1,15 +1,15 @@
-#include <mg/core/config.hpp>
-
 #include <cstdlib>
 #include <memory>
 #include <string>
+
+#include <mg/core/config.hpp>
 
 namespace mg::config
 {
 namespace
 {
-[[nodiscard]] auto environment_path(const char* name)
-    -> std::optional<std::filesystem::path>
+[[nodiscard]] std::optional<std::filesystem::path> environment_path(
+    const char* name)
 {
 #if defined(_MSC_VER)
   auto* buffer = static_cast<char*>(nullptr);
@@ -18,7 +18,8 @@ namespace
     return std::nullopt;
   }
 
-  auto cleanup = std::unique_ptr<char, decltype(&std::free)> {buffer, std::free};
+  auto cleanup =
+      std::unique_ptr<char, decltype(&std::free)> {buffer, std::free};
   if (size <= 1U || buffer[0] == '\0') {
     return std::nullopt;
   }
@@ -35,7 +36,7 @@ namespace
 }
 }  // namespace
 
-auto current_environment() -> Environment
+Environment current_environment()
 {
   return Environment {
       .xdg_config_home = environment_path("XDG_CONFIG_HOME"),
@@ -46,8 +47,7 @@ auto current_environment() -> Environment
   };
 }
 
-auto find_config_file(std::string_view filename)
-    -> std::optional<std::filesystem::path>
+std::optional<std::filesystem::path> find_config_file(std::string_view filename)
 {
   auto ec = std::error_code {};
   const auto current = std::filesystem::current_path(ec);
@@ -58,9 +58,8 @@ auto find_config_file(std::string_view filename)
   return find_config_file_from(current, filename);
 }
 
-auto find_config_file_from(const std::filesystem::path& start_dir,
-                           std::string_view filename)
-    -> std::optional<std::filesystem::path>
+std::optional<std::filesystem::path> find_config_file_from(
+    const std::filesystem::path& start_dir, std::string_view filename)
 {
   const auto name = std::filesystem::path {filename};
   if (name.empty()) {
@@ -70,11 +69,12 @@ auto find_config_file_from(const std::filesystem::path& start_dir,
   auto ec = std::error_code {};
   if (name.is_absolute()) {
     return std::filesystem::exists(name, ec) && !ec
-               ? std::optional<std::filesystem::path> {name}
-               : std::nullopt;
+        ? std::optional<std::filesystem::path> {name}
+        : std::nullopt;
   }
 
-  auto current = start_dir.empty() ? std::filesystem::current_path(ec) : start_dir;
+  auto current =
+      start_dir.empty() ? std::filesystem::current_path(ec) : start_dir;
   if (ec) {
     return std::nullopt;
   }
@@ -101,13 +101,13 @@ auto find_config_file_from(const std::filesystem::path& start_dir,
   }
 }
 
-auto get_config_dir() -> std::expected<std::filesystem::path, MgError>
+std::expected<std::filesystem::path, MgError> get_config_dir()
 {
   return get_config_dir(current_environment());
 }
 
-auto get_config_dir(const Environment& environment)
-    -> std::expected<std::filesystem::path, MgError>
+std::expected<std::filesystem::path, MgError> get_config_dir(
+    const Environment& environment)
 {
   if (environment.xdg_config_home) {
     return *environment.xdg_config_home / "mg";
@@ -124,13 +124,13 @@ auto get_config_dir(const Environment& environment)
   return std::unexpected {MgError::io_error};
 }
 
-auto get_cache_dir() -> std::expected<std::filesystem::path, MgError>
+std::expected<std::filesystem::path, MgError> get_cache_dir()
 {
   return get_cache_dir(current_environment());
 }
 
-auto get_cache_dir(const Environment& environment)
-    -> std::expected<std::filesystem::path, MgError>
+std::expected<std::filesystem::path, MgError> get_cache_dir(
+    const Environment& environment)
 {
   if (environment.xdg_cache_home) {
     return *environment.xdg_cache_home / "mg";

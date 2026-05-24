@@ -30,7 +30,7 @@ enum class MgError
   invalid_argument,
 };
 
-[[nodiscard]] auto error_message(MgError error) noexcept -> std::string_view;
-[[nodiscard]] auto error_prefix(MgError error) noexcept -> std::string_view;
-[[nodiscard]] auto is_user_facing_error(MgError error) noexcept -> bool;
+[[nodiscard]] std::string_view error_message(MgError error) noexcept;
+[[nodiscard]] std::string_view error_prefix(MgError error) noexcept;
+[[nodiscard]] bool is_user_facing_error(MgError error) noexcept;
 }  // namespace mg

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <format>
-#include <utility>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace mg
 {
@@ -26,7 +26,7 @@ public:
   LogLevel level {LogLevel::info};
   bool enable_ansi {true};
 
-  [[nodiscard]] auto should_log(LogLevel message_level) const noexcept -> bool;
+  [[nodiscard]] bool should_log(LogLevel message_level) const noexcept;
   void log(LogLevel message_level, std::string_view message);
   void info_multi(std::span<const std::string_view> messages);
 
@@ -43,11 +43,11 @@ public:
   }
 };
 
-[[nodiscard]] auto logger() -> Logger&;
-[[nodiscard]] auto parse_log_level(std::string_view level) noexcept -> LogLevel;
-[[nodiscard]] auto level_name(LogLevel level) noexcept -> std::string_view;
-[[nodiscard]] auto trim_trailing_newline(std::string_view message) noexcept
-    -> std::string_view;
+[[nodiscard]] Logger& logger();
+[[nodiscard]] LogLevel parse_log_level(std::string_view level) noexcept;
+[[nodiscard]] std::string_view level_name(LogLevel level) noexcept;
+[[nodiscard]] std::string_view trim_trailing_newline(
+    std::string_view message) noexcept;
 
 template<typename... Args>
 void log_error(std::format_string<Args...> format, Args&&... args)

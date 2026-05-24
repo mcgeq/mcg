@@ -12,12 +12,12 @@ inline constexpr int k_project_version_major {0};
 inline constexpr int k_project_version_minor {1};
 inline constexpr int k_project_version_patch {0};
 
-[[nodiscard]] constexpr auto project_name() noexcept -> std::string_view
+[[nodiscard]] constexpr std::string_view project_name() noexcept
 {
   return k_project_name;
 }
 
-[[nodiscard]] constexpr auto project_version() noexcept -> std::string_view
+[[nodiscard]] constexpr std::string_view project_version() noexcept
 {
   return k_project_version;
 }

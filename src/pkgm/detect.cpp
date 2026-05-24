@@ -1,7 +1,3 @@
-#include <mg/pkgm/detect.hpp>
-
-#include <mg/pkgm/registry.hpp>
-
 #include <array>
 #include <cstddef>
 #include <filesystem>
@@ -11,6 +7,9 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <mg/pkgm/detect.hpp>
+#include <mg/pkgm/registry.hpp>
 
 namespace mg::pkgm
 {
@@ -61,14 +60,16 @@ struct JsonMember
 
 void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
 {
-  while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\t'
-                              || json[pos] == '\r' || json[pos] == '\n')) {
+  while (pos < json.size()
+         && (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\r'
+             || json[pos] == '\n'))
+  {
     ++pos;
   }
 }
 
-[[nodiscard]] auto parse_json_string(std::string_view json, std::size_t& pos)
-    -> std::optional<std::string_view>
+[[nodiscard]] std::optional<std::string_view> parse_json_string(
+    std::string_view json, std::size_t& pos)
 {
   if (pos >= json.size() || json[pos] != '"') {
     return std::nullopt;
@@ -91,9 +92,9 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto skip_json_value(std::string_view json, std::size_t& pos) -> bool;
+[[nodiscard]] bool skip_json_value(std::string_view json, std::size_t& pos);
 
-[[nodiscard]] auto skip_json_object(std::string_view json, std::size_t& pos) -> bool
+[[nodiscard]] bool skip_json_object(std::string_view json, std::size_t& pos)
 {
   if (pos >= json.size() || json[pos] != '{') {
     return false;
@@ -136,7 +137,7 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return false;
 }
 
-[[nodiscard]] auto skip_json_array(std::string_view json, std::size_t& pos) -> bool
+[[nodiscard]] bool skip_json_array(std::string_view json, std::size_t& pos)
 {
   if (pos >= json.size() || json[pos] != '[') {
     return false;
@@ -170,18 +171,19 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return false;
 }
 
-[[nodiscard]] auto skip_json_scalar(std::string_view json, std::size_t& pos) -> bool
+[[nodiscard]] bool skip_json_scalar(std::string_view json, std::size_t& pos)
 {
   const auto begin = pos;
   while (pos < json.size() && json[pos] != ',' && json[pos] != '}'
          && json[pos] != ']' && json[pos] != ' ' && json[pos] != '\t'
-         && json[pos] != '\r' && json[pos] != '\n') {
+         && json[pos] != '\r' && json[pos] != '\n')
+  {
     ++pos;
   }
   return pos > begin;
 }
 
-[[nodiscard]] auto skip_json_value(std::string_view json, std::size_t& pos) -> bool
+[[nodiscard]] bool skip_json_value(std::string_view json, std::size_t& pos)
 {
   skip_json_ws(json, pos);
   if (pos >= json.size()) {
@@ -200,8 +202,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return skip_json_scalar(json, pos);
 }
 
-[[nodiscard]] auto json_object_members(std::string_view json)
-    -> std::optional<std::vector<JsonMember>>
+[[nodiscard]] std::optional<std::vector<JsonMember>> json_object_members(
+    std::string_view json)
 {
   auto pos = std::size_t {};
   auto members = std::vector<JsonMember> {};
@@ -234,7 +236,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
     if (!skip_json_value(json, pos)) {
       return std::nullopt;
     }
-    members.push_back(JsonMember {*key, json.substr(value_begin, pos - value_begin)});
+    members.push_back(
+        JsonMember {*key, json.substr(value_begin, pos - value_begin)});
 
     skip_json_ws(json, pos);
     if (pos >= json.size()) {
@@ -255,9 +258,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto json_object_member_value(std::string_view json,
-                                            std::string_view key)
-    -> std::optional<std::string_view>
+[[nodiscard]] std::optional<std::string_view> json_object_member_value(
+    std::string_view json, std::string_view key)
 {
   const auto members = json_object_members(json);
   if (!members) {
@@ -272,9 +274,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto json_object_has_member(std::string_view json,
-                                          std::string_view key)
-    -> std::optional<bool>
+[[nodiscard]] std::optional<bool> json_object_has_member(std::string_view json,
+                                                         std::string_view key)
 {
   const auto members = json_object_members(json);
   if (!members) {
@@ -289,15 +290,15 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return false;
 }
 
-[[nodiscard]] auto path_exists(const std::filesystem::path& dir,
-                               std::string_view file) -> bool
+[[nodiscard]] bool path_exists(const std::filesystem::path& dir,
+                               std::string_view file)
 {
   std::error_code ec;
   return std::filesystem::exists(dir / std::filesystem::path {file}, ec);
 }
 
-[[nodiscard]] auto read_file(const std::filesystem::path& path)
-    -> std::optional<std::string>
+[[nodiscard]] std::optional<std::string> read_file(
+    const std::filesystem::path& path)
 {
   auto input = std::ifstream {path, std::ios::binary};
   if (!input) {
@@ -309,13 +310,13 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return buffer.str();
 }
 
-[[nodiscard]] constexpr auto is_toml_whitespace(char ch) noexcept -> bool
+[[nodiscard]] constexpr bool is_toml_whitespace(char ch) noexcept
 {
   return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
 }
 
-[[nodiscard]] auto trim_toml_whitespace(std::string_view value) noexcept
-    -> std::string_view
+[[nodiscard]] std::string_view trim_toml_whitespace(
+    std::string_view value) noexcept
 {
   while (!value.empty() && is_toml_whitespace(value.front())) {
     value.remove_prefix(1);
@@ -326,8 +327,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return value;
 }
 
-[[nodiscard]] auto strip_toml_comment(std::string_view line) noexcept
-    -> std::string_view
+[[nodiscard]] std::string_view strip_toml_comment(
+    std::string_view line) noexcept
 {
   auto in_basic_string = false;
   auto in_literal_string = false;
@@ -367,8 +368,7 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return line;
 }
 
-[[nodiscard]] auto normalized_toml_bare_section(std::string_view section)
-    -> std::string
+[[nodiscard]] std::string normalized_toml_bare_section(std::string_view section)
 {
   auto normalized = std::string {};
   normalized.reserve(section.size());
@@ -380,8 +380,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return normalized;
 }
 
-[[nodiscard]] auto toml_section_matches(std::string_view candidate,
-                                        std::string_view section) -> bool
+[[nodiscard]] bool toml_section_matches(std::string_view candidate,
+                                        std::string_view section)
 {
   const auto normalized = normalized_toml_bare_section(candidate);
   if (normalized == section) {
@@ -391,8 +391,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
       && std::string_view {normalized}.substr(0, section.size()) == section;
 }
 
-[[nodiscard]] auto has_toml_section(std::string_view content,
-                                    std::string_view section) -> bool
+[[nodiscard]] bool has_toml_section(std::string_view content,
+                                    std::string_view section)
 {
   auto rest = content;
   while (!rest.empty()) {
@@ -428,14 +428,14 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return false;
 }
 
-[[nodiscard]] auto is_node_manager(ManagerType manager) noexcept -> bool
+[[nodiscard]] bool is_node_manager(ManagerType manager) noexcept
 {
   return manager == ManagerType::npm || manager == ManagerType::pnpm
       || manager == ManagerType::bun || manager == ManagerType::yarn;
 }
 
-[[nodiscard]] auto package_manager_name_matches(std::string_view value,
-                                                std::string_view expected) -> bool
+[[nodiscard]] bool package_manager_name_matches(std::string_view value,
+                                                std::string_view expected)
 {
   if (iequals(value, expected)) {
     return true;
@@ -446,9 +446,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return iequals(value.substr(0, expected.size()), expected);
 }
 
-[[nodiscard]] auto extract_json_string_value(std::string_view json,
-                                             std::string_view key)
-    -> std::optional<std::string_view>
+[[nodiscard]] std::optional<std::string_view> extract_json_string_value(
+    std::string_view json, std::string_view key)
 {
   const auto value = json_object_member_value(json, key);
   if (!value) {
@@ -468,9 +467,9 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return parsed;
 }
 
-[[nodiscard]] auto json_object_has_key(std::string_view json,
+[[nodiscard]] bool json_object_has_key(std::string_view json,
                                        std::string_view object_key,
-                                       std::string_view key) -> bool
+                                       std::string_view key)
 {
   const auto object = json_object_member_value(json, object_key);
   if (!object) {
@@ -479,10 +478,11 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return json_object_has_member(*object, key).value_or(false);
 }
 
-[[nodiscard]] auto node_manager_from_package_json(std::string_view json)
-    -> std::optional<ManagerType>
+[[nodiscard]] std::optional<ManagerType> node_manager_from_package_json(
+    std::string_view json)
 {
-  const auto package_manager = extract_json_string_value(json, "packageManager");
+  const auto package_manager =
+      extract_json_string_value(json, "packageManager");
   if (!package_manager) {
     return std::nullopt;
   }
@@ -502,8 +502,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto detect_node_lockfile_manager(const std::filesystem::path& dir)
-    -> std::optional<ManagerType>
+[[nodiscard]] std::optional<ManagerType> detect_node_lockfile_manager(
+    const std::filesystem::path& dir)
 {
   for (const auto detector : node_lockfile_detectors) {
     if (path_exists(dir, detector.file)) {
@@ -513,12 +513,13 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto detect_node_run_manager_details(const std::filesystem::path& dir,
-                                                   std::string_view run_target)
-    -> std::optional<DetectionResult>
+[[nodiscard]] std::optional<DetectionResult> detect_node_run_manager_details(
+    const std::filesystem::path& dir, std::string_view run_target)
 {
   const auto package_json = read_file(dir / "package.json");
-  if (!package_json || !json_object_has_key(*package_json, "scripts", run_target)) {
+  if (!package_json
+      || !json_object_has_key(*package_json, "scripts", run_target))
+  {
     return std::nullopt;
   }
 
@@ -528,11 +529,12 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   if (auto manager = node_manager_from_package_json(*package_json)) {
     return DetectionResult {*manager, DetectionStrength::strong};
   }
-  return DetectionResult {ManagerType::npm, DetectionStrength::weak_node_fallback};
+  return DetectionResult {ManagerType::npm,
+                          DetectionStrength::weak_node_fallback};
 }
 
-[[nodiscard]] auto detect_node_fallback_details(const std::filesystem::path& dir)
-    -> std::optional<DetectionResult>
+[[nodiscard]] std::optional<DetectionResult> detect_node_fallback_details(
+    const std::filesystem::path& dir)
 {
   const auto package_json = read_file(dir / "package.json");
   if (!package_json) {
@@ -553,11 +555,12 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
     return DetectionResult {*manager, DetectionStrength::strong};
   }
 
-  return DetectionResult {ManagerType::npm, DetectionStrength::weak_node_fallback};
+  return DetectionResult {ManagerType::npm,
+                          DetectionStrength::weak_node_fallback};
 }
 
-[[nodiscard]] auto detect_in_dir_details(const std::filesystem::path& dir)
-    -> std::optional<DetectionResult>
+[[nodiscard]] std::optional<DetectionResult> detect_in_dir_details(
+    const std::filesystem::path& dir)
 {
   for (const auto detector : lockfile_detectors) {
     if (path_exists(dir, detector.file)) {
@@ -583,8 +586,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return detect_node_fallback_details(dir);
 }
 
-[[nodiscard]] auto first_non_empty(const std::vector<std::string>& values)
-    -> std::optional<std::string_view>
+[[nodiscard]] std::optional<std::string_view> first_non_empty(
+    const std::vector<std::string>& values)
 {
   for (const auto& value : values) {
     if (!value.empty()) {
@@ -594,23 +597,22 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
   return std::nullopt;
 }
 
-[[nodiscard]] auto preferred_run_target(std::string_view action,
-                                        const CommandArgs& command_args)
-    -> std::optional<std::string_view>
+[[nodiscard]] std::optional<std::string_view> preferred_run_target(
+    std::string_view action, const CommandArgs& command_args)
 {
   if (is_run_action(action)) {
     return first_non_empty(command_args.packages);
   }
   if (is_exec_action(action) && command_args.manager_args.size() >= 2
-      && iequals(command_args.manager_args[0], "run")) {
+      && iequals(command_args.manager_args[0], "run"))
+  {
     return std::string_view {command_args.manager_args[1]};
   }
   return std::nullopt;
 }
 
-[[nodiscard]] auto detect_from_path_with_preference(
-    std::filesystem::path start_dir,
-    std::optional<std::string_view> run_target) -> std::optional<ManagerType>
+[[nodiscard]] std::optional<ManagerType> detect_from_path_with_preference(
+    std::filesystem::path start_dir, std::optional<std::string_view> run_target)
 {
   auto current = std::filesystem::absolute(std::move(start_dir));
   auto weak_run_node_fallback = std::optional<ManagerType> {};
@@ -618,7 +620,8 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
 
   while (true) {
     if (run_target) {
-      if (auto detected = detect_node_run_manager_details(current, *run_target)) {
+      if (auto detected = detect_node_run_manager_details(current, *run_target))
+      {
         if (detected->strength == DetectionStrength::strong) {
           return detected->manager;
         }
@@ -653,39 +656,38 @@ void skip_json_ws(std::string_view json, std::size_t& pos) noexcept
 
     const auto parent = current.parent_path();
     if (parent == current || parent.empty()) {
-      return weak_run_node_fallback ? weak_run_node_fallback : weak_node_fallback;
+      return weak_run_node_fallback ? weak_run_node_fallback
+                                    : weak_node_fallback;
     }
     current = parent;
   }
 }
 }  // namespace
 
-auto detect_package_manager() -> std::optional<ManagerType>
+std::optional<ManagerType> detect_package_manager()
 {
   return detect_package_manager_from_path(std::filesystem::current_path());
 }
 
-auto detect_package_manager_from_path(const std::filesystem::path& start_dir)
-    -> std::optional<ManagerType>
+std::optional<ManagerType> detect_package_manager_from_path(
+    const std::filesystem::path& start_dir)
 {
   return detect_from_path_with_preference(start_dir, std::nullopt);
 }
 
-auto detect_package_manager_for_command(std::string_view action,
-                                        const CommandArgs& command_args)
-    -> std::optional<ManagerType>
+std::optional<ManagerType> detect_package_manager_for_command(
+    std::string_view action, const CommandArgs& command_args)
 {
-  return detect_package_manager_for_command_from_path(std::filesystem::current_path(),
-                                                      action,
-                                                      command_args);
+  return detect_package_manager_for_command_from_path(
+      std::filesystem::current_path(), action, command_args);
 }
 
-auto detect_package_manager_for_command_from_path(
+std::optional<ManagerType> detect_package_manager_for_command_from_path(
     const std::filesystem::path& start_dir,
     std::string_view action,
-    const CommandArgs& command_args) -> std::optional<ManagerType>
+    const CommandArgs& command_args)
 {
-  return detect_from_path_with_preference(start_dir,
-                                          preferred_run_target(action, command_args));
+  return detect_from_path_with_preference(
+      start_dir, preferred_run_target(action, command_args));
 }
 }  // namespace mg::pkgm

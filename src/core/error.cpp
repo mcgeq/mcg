@@ -2,7 +2,7 @@
 
 namespace mg
 {
-auto error_message(MgError error) noexcept -> std::string_view
+std::string_view error_message(MgError error) noexcept
 {
   switch (error) {
     case MgError::no_package_manager:
@@ -54,7 +54,7 @@ auto error_message(MgError error) noexcept -> std::string_view
   return "Unknown error";
 }
 
-auto error_prefix(MgError error) noexcept -> std::string_view
+std::string_view error_prefix(MgError error) noexcept
 {
   switch (error) {
     case MgError::command_failed:
@@ -66,7 +66,7 @@ auto error_prefix(MgError error) noexcept -> std::string_view
   }
 }
 
-auto is_user_facing_error(MgError error) noexcept -> bool
+bool is_user_facing_error(MgError error) noexcept
 {
   switch (error) {
     case MgError::no_package_manager:

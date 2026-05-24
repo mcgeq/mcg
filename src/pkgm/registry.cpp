@@ -1,6 +1,6 @@
-#include <mg/pkgm/registry.hpp>
-
 #include <string>
+
+#include <mg/pkgm/registry.hpp>
 
 namespace mg::pkgm
 {
@@ -15,7 +15,8 @@ enum class ActionKind
   list,
 };
 
-void append_all(std::vector<std::string>& argv, const std::vector<std::string>& values)
+void append_all(std::vector<std::string>& argv,
+                const std::vector<std::string>& values)
 {
   argv.insert(argv.end(), values.begin(), values.end());
 }
@@ -25,7 +26,7 @@ void append_arg(std::vector<std::string>& argv, std::string_view value)
   argv.emplace_back(value);
 }
 
-[[nodiscard]] auto is_dev_profile(std::string_view profile) noexcept -> bool
+[[nodiscard]] bool is_dev_profile(std::string_view profile) noexcept
 {
   return profile == "dev";
 }
@@ -35,7 +36,8 @@ void append_all_effective_profiles(std::vector<std::string>& argv,
                                    const PackageOptions& options)
 {
   for (auto index = std::size_t {0}; index < options.effective_profile_count();
-       ++index) {
+       ++index)
+  {
     if (auto profile = options.effective_profile_at(index)) {
       append_arg(argv, flag);
       append_arg(argv, *profile);
@@ -94,7 +96,9 @@ void append_pdm_effective_profile_selection(std::vector<std::string>& argv,
 {
   auto include_dev = options.dev;
   for (auto index = std::size_t {0}; index < options.profile_count(); ++index) {
-    if (auto profile = options.profile_at(index); profile && is_dev_profile(*profile)) {
+    if (auto profile = options.profile_at(index);
+        profile && is_dev_profile(*profile))
+    {
       include_dev = true;
     }
   }
@@ -213,16 +217,16 @@ void append_option_args(std::vector<std::string>& argv,
 }
 }  // namespace
 
-auto get_manager_name(ManagerType manager) noexcept -> std::string_view
+std::string_view get_manager_name(ManagerType manager) noexcept
 {
   return manager_name(manager);
 }
 
-auto append_command_args(std::vector<std::string>& argv,
+bool append_command_args(std::vector<std::string>& argv,
                          ManagerType manager,
                          std::string_view action,
                          const CommandArgs& command_args,
-                         const PackageOptions& options) -> bool
+                         const PackageOptions& options)
 {
   const auto& packages = command_args.packages;
   const auto& manager_args = command_args.manager_args;
@@ -255,7 +259,8 @@ auto append_command_args(std::vector<std::string>& argv,
     }
     append_all(argv, packages);
     if (!manager_args.empty()
-        && (manager == ManagerType::npm || manager == ManagerType::pnpm)) {
+        && (manager == ManagerType::npm || manager == ManagerType::pnpm))
+    {
       append_arg(argv, "--");
     }
     append_all(argv, manager_args);
@@ -346,7 +351,8 @@ auto append_command_args(std::vector<std::string>& argv,
         break;
     }
     append_option_args(argv, manager, ActionKind::upgrade, options);
-    if (packages.empty() && manager_args.empty() && manager == ManagerType::pip) {
+    if (packages.empty() && manager_args.empty() && manager == ManagerType::pip)
+    {
       return false;
     }
     append_all(argv, packages);
@@ -405,49 +411,50 @@ auto append_command_args(std::vector<std::string>& argv,
   return false;
 }
 
-auto action_requires_packages(std::string_view action) noexcept -> bool
+bool action_requires_packages(std::string_view action) noexcept
 {
   return is_add_action(action) || is_remove_action(action);
 }
 
-auto action_requires_run_target(std::string_view action) noexcept -> bool
+bool action_requires_run_target(std::string_view action) noexcept
 {
   return is_run_action(action);
 }
 
-auto is_add_action(std::string_view action) noexcept -> bool
+bool is_add_action(std::string_view action) noexcept
 {
   return iequals(action, "add") || iequals(action, "a");
 }
 
-auto is_remove_action(std::string_view action) noexcept -> bool
+bool is_remove_action(std::string_view action) noexcept
 {
-  return iequals(action, "remove") || iequals(action, "rm") || iequals(action, "r");
+  return iequals(action, "remove") || iequals(action, "rm")
+      || iequals(action, "r");
 }
 
-auto is_upgrade_action(std::string_view action) noexcept -> bool
+bool is_upgrade_action(std::string_view action) noexcept
 {
   return iequals(action, "upgrade") || iequals(action, "update")
       || iequals(action, "u");
 }
 
-auto is_install_action(std::string_view action) noexcept -> bool
+bool is_install_action(std::string_view action) noexcept
 {
   return iequals(action, "install") || iequals(action, "i");
 }
 
-auto is_list_action(std::string_view action) noexcept -> bool
+bool is_list_action(std::string_view action) noexcept
 {
   return iequals(action, "list") || iequals(action, "analyze")
       || iequals(action, "l");
 }
 
-auto is_exec_action(std::string_view action) noexcept -> bool
+bool is_exec_action(std::string_view action) noexcept
 {
   return iequals(action, "exec") || iequals(action, "x");
 }
 
-auto is_run_action(std::string_view action) noexcept -> bool
+bool is_run_action(std::string_view action) noexcept
 {
   return iequals(action, "run");
 }

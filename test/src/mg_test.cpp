@@ -1,8 +1,6 @@
-#include <mg/mg.hpp>
-#include <catch2/catch_test_macros.hpp>
-
 #include <chrono>
 #include <cstdlib>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
@@ -11,6 +9,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+#include <mg/mg.hpp>
 
 #if defined(_WIN32) && !defined(_MSC_VER)
 #  if !defined(NOMINMAX)
@@ -28,14 +29,15 @@ struct TemporaryDirectory
 {
   explicit TemporaryDirectory(std::string_view name)
   {
-    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto stamp =
+        std::chrono::steady_clock::now().time_since_epoch().count();
     path = std::filesystem::temp_directory_path()
-           / ("mg-" + std::string {name} + "-" + std::to_string(stamp));
+        / ("mg-" + std::string {name} + "-" + std::to_string(stamp));
     std::filesystem::create_directories(path);
   }
 
   TemporaryDirectory(const TemporaryDirectory&) = delete;
-  auto operator=(const TemporaryDirectory&) -> TemporaryDirectory& = delete;
+  TemporaryDirectory& operator=(const TemporaryDirectory&) = delete;
 
   ~TemporaryDirectory()
   {
@@ -48,17 +50,14 @@ struct TemporaryDirectory
 
 struct RuntimeReset
 {
-  ~RuntimeReset()
-  {
-    mg::set_runtime({});
-  }
+  ~RuntimeReset() { mg::set_runtime({}); }
 };
 
 struct CapturedRuntime
 {
   CapturedRuntime()
-      : previous_level {mg::logger().level},
-        previous_ansi {mg::logger().enable_ansi}
+      : previous_level {mg::logger().level}
+      , previous_ansi {mg::logger().enable_ansi}
   {
     mg::set_runtime({
         .out = &out,
@@ -69,7 +68,7 @@ struct CapturedRuntime
   }
 
   CapturedRuntime(const CapturedRuntime&) = delete;
-  auto operator=(const CapturedRuntime&) -> CapturedRuntime& = delete;
+  CapturedRuntime& operator=(const CapturedRuntime&) = delete;
 
   ~CapturedRuntime()
   {
@@ -84,16 +83,17 @@ struct CapturedRuntime
   bool previous_ansi;
 };
 
-void write_test_file(const std::filesystem::path& path, std::string_view content)
+void write_test_file(const std::filesystem::path& path,
+                     std::string_view content)
 {
   std::filesystem::create_directories(path.parent_path());
   auto file = std::ofstream {path, std::ios::binary};
   file << content;
 }
 
-[[nodiscard]] auto make_command_args(
+[[nodiscard]] mg::CommandArgs make_command_args(
     std::initializer_list<std::string_view> packages = {},
-    std::initializer_list<std::string_view> manager_args = {}) -> mg::CommandArgs
+    std::initializer_list<std::string_view> manager_args = {})
 {
   auto args = mg::CommandArgs {};
   for (const auto package : packages) {
@@ -105,15 +105,15 @@ void write_test_file(const std::filesystem::path& path, std::string_view content
   return args;
 }
 
-[[nodiscard]] auto run_args(std::initializer_list<std::string_view> args)
+[[nodiscard]] std::expected<void, mg::MgError> run_args(
+    std::initializer_list<std::string_view> args)
 {
   const auto argv = std::vector<std::string_view> {args};
   return mg::run(argv);
 }
 
-[[nodiscard]] auto make_package_options(
-    std::initializer_list<std::string_view> profiles = {},
-    bool dev = false) -> mg::PackageOptions
+[[nodiscard]] mg::PackageOptions make_package_options(
+    std::initializer_list<std::string_view> profiles = {}, bool dev = false)
 {
   auto options = mg::PackageOptions {};
   options.dev = dev;
@@ -129,7 +129,8 @@ void expect_command(mg::ManagerType manager,
                     const mg::PackageOptions& options,
                     const std::vector<std::string>& expected)
 {
-  auto argv = std::vector<std::string> {std::string {mg::manager_name(manager)}};
+  auto argv =
+      std::vector<std::string> {std::string {mg::manager_name(manager)}};
 
   REQUIRE(mg::pkgm::append_command_args(argv, manager, action, args, options));
   REQUIRE(argv == expected);
@@ -139,14 +140,11 @@ void expect_no_command(mg::ManagerType manager,
                        std::string_view action,
                        const mg::CommandArgs& args)
 {
-  auto argv = std::vector<std::string> {std::string {mg::manager_name(manager)}};
+  auto argv =
+      std::vector<std::string> {std::string {mg::manager_name(manager)}};
 
   REQUIRE_FALSE(mg::pkgm::append_command_args(
-      argv,
-      manager,
-      action,
-      args,
-      mg::PackageOptions {}));
+      argv, manager, action, args, mg::PackageOptions {}));
 }
 
 void require_planned_command(
@@ -160,7 +158,7 @@ void require_planned_command(
 }
 
 #if defined(_WIN32)
-[[nodiscard]] auto get_env_string(const char* name) -> std::optional<std::string>
+[[nodiscard]] std::optional<std::string> get_env_string(const char* name)
 {
 #  if defined(_MSC_VER)
   char* raw_value = nullptr;
@@ -169,7 +167,8 @@ void require_planned_command(
     return std::nullopt;
   }
 
-  auto guard = std::unique_ptr<char, decltype(&std::free)> {raw_value, &std::free};
+  auto guard =
+      std::unique_ptr<char, decltype(&std::free)> {raw_value, &std::free};
   return std::string {guard.get()};
 #  else
   const auto required_size = GetEnvironmentVariableA(name, nullptr, 0);
@@ -189,7 +188,7 @@ void require_planned_command(
 #  endif
 }
 
-[[nodiscard]] auto set_env_string(const char* name, const char* value) -> bool
+[[nodiscard]] bool set_env_string(const char* name, const char* value)
 {
 #  if defined(_MSC_VER)
   return _putenv_s(name, value) == 0;
@@ -201,12 +200,14 @@ void require_planned_command(
 struct EnvironmentVariableRestore
 {
   explicit EnvironmentVariableRestore(const char* variable_name)
-      : name {variable_name},
-        value {get_env_string(variable_name)}
-  {}
+      : name {variable_name}
+      , value {get_env_string(variable_name)}
+  {
+  }
 
   EnvironmentVariableRestore(const EnvironmentVariableRestore&) = delete;
-  auto operator=(const EnvironmentVariableRestore&) -> EnvironmentVariableRestore& = delete;
+  EnvironmentVariableRestore& operator=(const EnvironmentVariableRestore&) =
+      delete;
 
   ~EnvironmentVariableRestore()
   {
@@ -241,8 +242,9 @@ TEST_CASE("package options include implicit dev profile once", "[mg]")
   REQUIRE(options.effective_profile_at(1) == std::string_view {"docs"});
 }
 
-TEST_CASE("package options target the last explicit profile for add remove flows",
-          "[mg]")
+TEST_CASE(
+    "package options target the last explicit profile for add remove flows",
+    "[mg]")
 {
   auto options = mg::PackageOptions {};
   options.dev = true;
@@ -283,19 +285,16 @@ TEST_CASE("registry maps uv grouped install", "[mg]")
 
   auto argv = std::vector<std::string> {"uv"};
   REQUIRE(mg::pkgm::append_command_args(
-      argv,
-      mg::ManagerType::uv,
-      "install",
-      args,
-      options));
+      argv, mg::ManagerType::uv, "install", args, options));
 
-  REQUIRE(argv == std::vector<std::string> {
-                      "uv",
-                      "sync",
-                      "--group",
-                      "docs",
-                      "--frozen",
-                  });
+  REQUIRE(argv
+          == std::vector<std::string> {
+              "uv",
+              "sync",
+              "--group",
+              "docs",
+              "--frozen",
+          });
 }
 
 TEST_CASE("registry maps core add remove and upgrade commands", "[mg]")
@@ -333,18 +332,16 @@ TEST_CASE("registry maps core add remove and upgrade commands", "[mg]")
   expect_no_command(mg::ManagerType::pip, "upgrade", make_command_args());
 }
 
-TEST_CASE("registry maps python manager install list and profile options", "[mg]")
+TEST_CASE("registry maps python manager install list and profile options",
+          "[mg]")
 {
   expect_command(mg::ManagerType::uv,
                  "upgrade",
                  make_command_args({"requests"}),
                  {},
                  {"uv", "sync", "--upgrade-package", "requests"});
-  expect_command(mg::ManagerType::uv,
-                 "analyze",
-                 make_command_args(),
-                 {},
-                 {"uv", "tree"});
+  expect_command(
+      mg::ManagerType::uv, "analyze", make_command_args(), {}, {"uv", "tree"});
   expect_command(mg::ManagerType::poetry,
                  "list",
                  make_command_args(),
@@ -354,7 +351,14 @@ TEST_CASE("registry maps python manager install list and profile options", "[mg]
                  "install",
                  make_command_args(),
                  make_package_options({"docs", "lint"}, true),
-                 {"poetry", "install", "--with", "dev", "--with", "docs", "--with", "lint"});
+                 {"poetry",
+                  "install",
+                  "--with",
+                  "dev",
+                  "--with",
+                  "docs",
+                  "--with",
+                  "lint"});
   expect_command(mg::ManagerType::pdm,
                  "list",
                  make_command_args(),
@@ -406,9 +410,7 @@ TEST_CASE("registry forwards exec and run command arguments", "[mg]")
                  make_command_args({"pytest"}, {"-q"}),
                  {},
                  {"poetry", "run", "pytest", "-q"});
-  expect_no_command(mg::ManagerType::pip,
-                    "run",
-                    make_command_args({"python"}));
+  expect_no_command(mg::ManagerType::pip, "run", make_command_args({"python"}));
 }
 
 TEST_CASE("executor formats previews with quoted cwd", "[mg]")
@@ -433,18 +435,22 @@ TEST_CASE("executor resolves command shims through PATH and PATHEXT", "[mg]")
   write_test_file(temp.path / "fake-manager.cmd", "@echo off\r\n");
 
   auto path_value = temp.path.string();
-  if (const auto existing_path = get_env_string("PATH"); existing_path.has_value()) {
+  if (const auto existing_path = get_env_string("PATH");
+      existing_path.has_value())
+  {
     path_value += ';';
     path_value += *existing_path;
   }
   REQUIRE(set_env_string("PATH", path_value.c_str()));
   REQUIRE(set_env_string("PATHEXT", ".COM;.EXE;.BAT;.CMD;.PS1"));
 
-  const auto resolved = mg::pkgm::resolve_windows_command_for_test("fake-manager");
+  const auto resolved =
+      mg::pkgm::resolve_windows_command_for_test("fake-manager");
 
   REQUIRE(resolved.has_value());
   auto ec = std::error_code {};
-  REQUIRE(std::filesystem::equivalent(*resolved, temp.path / "fake-manager.cmd", ec));
+  REQUIRE(std::filesystem::equivalent(
+      *resolved, temp.path / "fake-manager.cmd", ec));
   REQUIRE_FALSE(ec);
 }
 #endif
@@ -507,7 +513,8 @@ TEST_CASE("run prints help and version from public flags", "[mg]")
   }
 }
 
-TEST_CASE("run rejects missing package and run targets before execution", "[mg]")
+TEST_CASE("run rejects missing package and run targets before execution",
+          "[mg]")
 {
   {
     auto capture = CapturedRuntime {};
@@ -516,7 +523,8 @@ TEST_CASE("run rejects missing package and run targets before execution", "[mg]"
     const auto result = mg::run(args);
 
     REQUIRE(result.has_value());
-    REQUIRE(capture.err.str().find("No packages specified") != std::string::npos);
+    REQUIRE(capture.err.str().find("No packages specified")
+            != std::string::npos);
   }
 
   {
@@ -526,11 +534,13 @@ TEST_CASE("run rejects missing package and run targets before execution", "[mg]"
     const auto result = mg::run(args);
 
     REQUIRE(result.has_value());
-    REQUIRE(capture.err.str().find("No run target specified") != std::string::npos);
+    REQUIRE(capture.err.str().find("No run target specified")
+            != std::string::npos);
   }
 }
 
-TEST_CASE("run reports unknown package commands after manager detection", "[mg]")
+TEST_CASE("run reports unknown package commands after manager detection",
+          "[mg]")
 {
   const auto temp = TemporaryDirectory {"run-unknown-package-command"};
   write_test_file(temp.path / "package.json",
@@ -564,7 +574,8 @@ TEST_CASE("run reports missing cwd and profile option values", "[mg]")
 
   {
     auto capture = CapturedRuntime {};
-    const auto args = std::vector<std::string_view> {"mg", "install", "--profile"};
+    const auto args =
+        std::vector<std::string_view> {"mg", "install", "--profile"};
 
     const auto result = mg::run(args);
 
@@ -601,8 +612,7 @@ TEST_CASE("run forwards package options around the action", "[mg]")
   REQUIRE(result.has_value());
   REQUIRE(capture.out.str().find("Using pnpm package manager")
           != std::string::npos);
-  REQUIRE(capture.out.str().find(
-              "pnpm add --save-dev mkdocs --frozen")
+  REQUIRE(capture.out.str().find("pnpm add --save-dev mkdocs --frozen")
           != std::string::npos);
   REQUIRE(capture.err.str().empty());
 }
@@ -630,19 +640,22 @@ package = false
   });
 
   REQUIRE(result.has_value());
-  REQUIRE(capture.out.str().find("Using uv package manager") != std::string::npos);
-  REQUIRE(capture.out.str().find(
-              "uv sync --group dev --group docs --group lint")
+  REQUIRE(capture.out.str().find("Using uv package manager")
           != std::string::npos);
+  REQUIRE(
+      capture.out.str().find("uv sync --group dev --group docs --group lint")
+      != std::string::npos);
   REQUIRE(capture.err.str().empty());
 }
 
-TEST_CASE("run forwards dev profile group combinations to target profile removals",
-          "[mg]")
+TEST_CASE(
+    "run forwards dev profile group combinations to target profile removals",
+    "[mg]")
 {
   const auto temp = TemporaryDirectory {"run-package-target-profile-removal"};
   write_test_file(temp.path / "pyproject.toml",
-                  "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.pdm]\ndistribution = true\n");
+                  "[project]\nname = \"demo\"\nversion = "
+                  "\"0.1.0\"\n\n[tool.pdm]\ndistribution = true\n");
   auto capture = CapturedRuntime {};
 
   const auto result = run_args({
@@ -727,8 +740,8 @@ TEST_CASE("run rejects package options before manager execution", "[mg]")
     const auto result = run_args({"mg", "--frozen", "add", "ruff"});
 
     REQUIRE(result.has_value());
-    REQUIRE(capture.err.str().find(
-                "Unknown package option: --frozen (use -- to pass manager-native args)")
+    REQUIRE(capture.err.str().find("Unknown package option: --frozen (use -- "
+                                   "to pass manager-native args)")
             != std::string::npos);
   }
 
@@ -754,7 +767,8 @@ TEST_CASE("config finds files by walking parent directories", "[mg]")
   const auto found = mg::config::find_config_file_from(nested, "mg.toml");
 
   REQUIRE(found.has_value());
-  REQUIRE(found->lexically_normal() == (temp.path / "mg.toml").lexically_normal());
+  REQUIRE(found->lexically_normal()
+          == (temp.path / "mg.toml").lexically_normal());
 }
 
 TEST_CASE("config file lookup handles absolute and missing paths", "[mg]")
@@ -763,9 +777,10 @@ TEST_CASE("config file lookup handles absolute and missing paths", "[mg]")
   const auto config = temp.path / "mg.toml";
   write_test_file(config, "name = \"demo\"\n");
 
-  const auto absolute = mg::config::find_config_file_from(temp.path, config.string());
-  const auto missing =
-      mg::config::find_config_file_from(temp.path, (temp.path / "missing.toml").string());
+  const auto absolute =
+      mg::config::find_config_file_from(temp.path, config.string());
+  const auto missing = mg::config::find_config_file_from(
+      temp.path, (temp.path / "missing.toml").string());
   const auto empty = mg::config::find_config_file_from(temp.path, "");
 
   REQUIRE(absolute.has_value());
@@ -774,7 +789,8 @@ TEST_CASE("config file lookup handles absolute and missing paths", "[mg]")
   REQUIRE_FALSE(empty.has_value());
 }
 
-TEST_CASE("config directories follow xdg home and windows fallback order", "[mg]")
+TEST_CASE("config directories follow xdg home and windows fallback order",
+          "[mg]")
 {
   auto environment = mg::config::Environment {
       .xdg_config_home = std::filesystem::path {"xdg-config"},
@@ -806,7 +822,8 @@ TEST_CASE("config directories follow xdg home and windows fallback order", "[mg]
   REQUIRE(config_dir.has_value());
   REQUIRE(cache_dir.has_value());
   REQUIRE(*config_dir == std::filesystem::path {"appdata"} / "mg");
-  REQUIRE(*cache_dir == std::filesystem::path {"localappdata"} / "mg" / "cache");
+  REQUIRE(*cache_dir
+          == std::filesystem::path {"localappdata"} / "mg" / "cache");
 
   environment.appdata.reset();
   environment.localappdata.reset();
@@ -848,7 +865,8 @@ TEST_CASE("package detection reads lockfiles with python lock precedence",
   {
     const auto temp = TemporaryDirectory {"detect-python-lock-precedence"};
     write_test_file(temp.path / "requirements.txt", "requests\n");
-    write_test_file(temp.path / "poetry.lock", "[[package]]\nname = \"demo\"\n");
+    write_test_file(temp.path / "poetry.lock",
+                    "[[package]]\nname = \"demo\"\n");
     REQUIRE(mg::pkgm::detect_package_manager_from_path(temp.path)
             == mg::ManagerType::poetry);
   }
@@ -859,7 +877,8 @@ TEST_CASE("package detection ignores invalid package json fallback", "[mg]")
   const auto temp = TemporaryDirectory {"invalid-package-json"};
   write_test_file(temp.path / "package.json", R"json({ "name": "demo", )json");
 
-  REQUIRE_FALSE(mg::pkgm::detect_package_manager_from_path(temp.path).has_value());
+  REQUIRE_FALSE(
+      mg::pkgm::detect_package_manager_from_path(temp.path).has_value());
 }
 
 TEST_CASE("plain package json falls back to npm", "[mg]")
@@ -879,7 +898,8 @@ TEST_CASE("package detection reads pyproject tool sections", "[mg]")
 {
   const auto uv = TemporaryDirectory {"pyproject-uv"};
   write_test_file(uv.path / "pyproject.toml",
-                  "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.uv]\npackage = true\n");
+                  "[project]\nname = \"demo\"\nversion = "
+                  "\"0.1.0\"\n\n[tool.uv]\npackage = true\n");
   REQUIRE(mg::pkgm::detect_package_manager_from_path(uv.path)
           == mg::ManagerType::uv);
 
@@ -891,26 +911,31 @@ TEST_CASE("package detection reads pyproject tool sections", "[mg]")
 
   const auto pdm = TemporaryDirectory {"pyproject-pdm"};
   write_test_file(pdm.path / "pyproject.toml",
-                  "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.pdm]\ndistribution = true\n");
+                  "[project]\nname = \"demo\"\nversion = "
+                  "\"0.1.0\"\n\n[tool.pdm]\ndistribution = true\n");
   REQUIRE(mg::pkgm::detect_package_manager_from_path(pdm.path)
           == mg::ManagerType::pdm);
 }
 
-TEST_CASE("package detection ignores commented and quoted pyproject tool sections",
-          "[mg]")
+TEST_CASE(
+    "package detection ignores commented and quoted pyproject tool sections",
+    "[mg]")
 {
   const auto temp = TemporaryDirectory {"pyproject-false-sections"};
   write_test_file(temp.path / "pyproject.toml",
-                  "[project]\nname = \"demo\"\ndescription = \"mentions [tool.uv] only\"\n# [tool.poetry]\n");
+                  "[project]\nname = \"demo\"\ndescription = \"mentions "
+                  "[tool.uv] only\"\n# [tool.poetry]\n");
 
-  REQUIRE_FALSE(mg::pkgm::detect_package_manager_from_path(temp.path).has_value());
+  REQUIRE_FALSE(
+      mg::pkgm::detect_package_manager_from_path(temp.path).has_value());
 }
 
 TEST_CASE("pyproject tool section wins over package json fallback", "[mg]")
 {
   const auto temp = TemporaryDirectory {"pyproject-over-package-json"};
-  write_test_file(temp.path / "pyproject.toml",
-                  "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.uv.sources]\n");
+  write_test_file(
+      temp.path / "pyproject.toml",
+      "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.uv.sources]\n");
   write_test_file(temp.path / "package.json",
                   R"json({
   "name": "demo",
@@ -941,14 +966,13 @@ TEST_CASE("run borrows parent pnpm manager for child package script", "[mg]")
   auto args = mg::CommandArgs {};
   args.add_package("build");
 
-  REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              child,
-              "run",
-              args)
-          == mg::ManagerType::pnpm);
+  REQUIRE(
+      mg::pkgm::detect_package_manager_for_command_from_path(child, "run", args)
+      == mg::ManagerType::pnpm);
 }
 
-TEST_CASE("exec run borrows parent pnpm manager for child package script", "[mg]")
+TEST_CASE("exec run borrows parent pnpm manager for child package script",
+          "[mg]")
 {
   const auto temp = TemporaryDirectory {"pnpm-workspace-exec-run"};
   const auto child = temp.path / "packages" / "app";
@@ -970,19 +994,17 @@ TEST_CASE("exec run borrows parent pnpm manager for child package script", "[mg]
   args.add_manager_arg("build");
 
   REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              child,
-              "exec",
-              args)
+              child, "exec", args)
           == mg::ManagerType::pnpm);
 
   const auto planned =
       mg::pkgm::plan_command_from_path(child, "exec", args, {});
-  require_planned_command(planned,
-                          mg::ManagerType::pnpm,
-                          {"pnpm", "run", "build"});
+  require_planned_command(
+      planned, mg::ManagerType::pnpm, {"pnpm", "run", "build"});
 }
 
-TEST_CASE("run falls back to cargo when package script target is absent", "[mg]")
+TEST_CASE("run falls back to cargo when package script target is absent",
+          "[mg]")
 {
   const auto temp = TemporaryDirectory {"mixed-run-fallback"};
   write_test_file(temp.path / "Cargo.toml",
@@ -1002,9 +1024,7 @@ TEST_CASE("run falls back to cargo when package script target is absent", "[mg]"
   args.add_package("build");
 
   REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              temp.path,
-              "run",
-              args)
+              temp.path, "run", args)
           == mg::ManagerType::cargo);
 }
 
@@ -1043,8 +1063,9 @@ TEST_CASE("package detection walks parents and balances child node fallback",
   {
     const auto temp = TemporaryDirectory {"detect-child-node-over-cargo"};
     const auto child = temp.path / "workspace" / "apps" / "web";
-    write_test_file(temp.path / "workspace" / "Cargo.toml",
-                    "[package]\nname = \"workspace-root\"\nversion = \"0.1.0\"\n");
+    write_test_file(
+        temp.path / "workspace" / "Cargo.toml",
+        "[package]\nname = \"workspace-root\"\nversion = \"0.1.0\"\n");
     write_test_file(child / "package.json",
                     R"json({
   "name": "web",
@@ -1056,8 +1077,9 @@ TEST_CASE("package detection walks parents and balances child node fallback",
   }
 }
 
-TEST_CASE("workspace child routing keeps climbing for stronger parent node managers",
-          "[mg]")
+TEST_CASE(
+    "workspace child routing keeps climbing for stronger parent node managers",
+    "[mg]")
 {
   const auto temp = TemporaryDirectory {"detect-parent-pnpm-above-cargo"};
   const auto child = temp.path / "workspace" / "native" / "packages" / "app";
@@ -1080,40 +1102,33 @@ TEST_CASE("workspace child routing keeps climbing for stronger parent node manag
   REQUIRE(mg::pkgm::detect_package_manager_from_path(child)
           == mg::ManagerType::pnpm);
 
-  const auto planned_install =
-      mg::pkgm::plan_command_from_path(child, "install", make_command_args(), {});
-  require_planned_command(planned_install,
-                          mg::ManagerType::pnpm,
-                          {"pnpm", "install"});
+  const auto planned_install = mg::pkgm::plan_command_from_path(
+      child, "install", make_command_args(), {});
+  require_planned_command(
+      planned_install, mg::ManagerType::pnpm, {"pnpm", "install"});
 
   auto run_args = mg::CommandArgs {};
   run_args.add_package("build");
   REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              child,
-              "run",
-              run_args)
+              child, "run", run_args)
           == mg::ManagerType::pnpm);
 
   const auto planned_run =
       mg::pkgm::plan_command_from_path(child, "run", run_args, {});
-  require_planned_command(planned_run,
-                          mg::ManagerType::pnpm,
-                          {"pnpm", "run", "build"});
+  require_planned_command(
+      planned_run, mg::ManagerType::pnpm, {"pnpm", "run", "build"});
 
   auto exec_args = mg::CommandArgs {};
   exec_args.add_manager_arg("run");
   exec_args.add_manager_arg("build");
   REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              child,
-              "exec",
-              exec_args)
+              child, "exec", exec_args)
           == mg::ManagerType::pnpm);
 
   const auto planned_exec =
       mg::pkgm::plan_command_from_path(child, "exec", exec_args, {});
-  require_planned_command(planned_exec,
-                          mg::ManagerType::pnpm,
-                          {"pnpm", "run", "build"});
+  require_planned_command(
+      planned_exec, mg::ManagerType::pnpm, {"pnpm", "run", "build"});
 }
 
 TEST_CASE("exec run prefers package manager declared by package json", "[mg]")
@@ -1135,9 +1150,7 @@ TEST_CASE("exec run prefers package manager declared by package json", "[mg]")
   args.add_manager_arg("build");
 
   REQUIRE(mg::pkgm::detect_package_manager_for_command_from_path(
-              temp.path,
-              "exec",
-              args)
+              temp.path, "exec", args)
           == mg::ManagerType::pnpm);
 }
 
@@ -1148,7 +1161,8 @@ TEST_CASE("package core plans nested uv and poetry commands", "[mg]")
     const auto nested = temp.path / "workspace" / "apps" / "demo";
     std::filesystem::create_directories(nested);
     write_test_file(temp.path / "workspace" / "pyproject.toml",
-                    "[project]\nname = \"demo\"\nversion = \"0.1.0\"\n\n[tool.uv]\npackage = true\n");
+                    "[project]\nname = \"demo\"\nversion = "
+                    "\"0.1.0\"\n\n[tool.uv]\npackage = true\n");
 
     auto args = make_command_args({}, {"--frozen"});
     auto options = make_package_options({"docs"});
@@ -1172,10 +1186,9 @@ TEST_CASE("package core plans nested uv and poetry commands", "[mg]")
     const auto planned =
         mg::pkgm::plan_command_from_path(nested, "add", args, options);
 
-    require_planned_command(
-        planned,
-        mg::ManagerType::poetry,
-        {"poetry", "add", "--group", "dev", "pytest"});
+    require_planned_command(planned,
+                            mg::ManagerType::poetry,
+                            {"poetry", "add", "--group", "dev", "pytest"});
   }
 }
 
@@ -1201,16 +1214,16 @@ TEST_CASE("package core plans workspace and mixed run commands", "[mg]")
     const auto planned =
         mg::pkgm::plan_command_from_path(child, "run", args, {});
 
-    require_planned_command(planned,
-                            mg::ManagerType::pnpm,
-                            {"pnpm", "run", "build"});
+    require_planned_command(
+        planned, mg::ManagerType::pnpm, {"pnpm", "run", "build"});
   }
 
   {
     const auto temp = TemporaryDirectory {"plan-node-script-over-cargo"};
     write_test_file(temp.path / "Cargo.toml",
                     "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n");
-    write_test_file(temp.path / "package-lock.json", "{\n  \"name\": \"demo\"\n}\n");
+    write_test_file(temp.path / "package-lock.json",
+                    "{\n  \"name\": \"demo\"\n}\n");
     write_test_file(temp.path / "package.json",
                     R"json({
   "name": "demo",
@@ -1223,9 +1236,8 @@ TEST_CASE("package core plans workspace and mixed run commands", "[mg]")
     const auto planned =
         mg::pkgm::plan_command_from_path(temp.path, "run", args, {});
 
-    require_planned_command(planned,
-                            mg::ManagerType::npm,
-                            {"npm", "run", "build:apk"});
+    require_planned_command(
+        planned, mg::ManagerType::npm, {"npm", "run", "build:apk"});
   }
 }
 
@@ -1234,16 +1246,14 @@ TEST_CASE("package core returns no package manager without executing", "[mg]")
   const auto temp = TemporaryDirectory {"plan-no-manager"};
 
   const auto planned = mg::pkgm::plan_command_from_path(
-      temp.path,
-      "install",
-      make_command_args(),
-      {});
+      temp.path, "install", make_command_args(), {});
 
   REQUIRE_FALSE(planned.has_value());
   REQUIRE(planned.error() == mg::MgError::no_package_manager);
 }
 
-TEST_CASE("package core dry-run executes planned command with cwd preview", "[mg]")
+TEST_CASE("package core dry-run executes planned command with cwd preview",
+          "[mg]")
 {
   const auto temp = TemporaryDirectory {"execute-dry-run-cwd"};
   const auto project = temp.path / "workspace" / "api tools";
@@ -1375,8 +1385,8 @@ TEST_CASE("fs commands reject invalid arity without touching files", "[mg]")
   auto capture = CapturedRuntime {};
   mg::current_runtime().fs_cwd = temp.path;
 
-  const auto write_args =
-      std::vector<std::string_view> {"mg", "fs", "write", "note.txt", "hello", "extra"};
+  const auto write_args = std::vector<std::string_view> {
+      "mg", "fs", "write", "note.txt", "hello", "extra"};
   const auto write_result = mg::run(write_args);
 
   REQUIRE(write_result.has_value());
@@ -1386,8 +1396,8 @@ TEST_CASE("fs commands reject invalid arity without touching files", "[mg]")
 
   capture.out.str({});
   capture.out.clear();
-  const auto move_args =
-      std::vector<std::string_view> {"mg", "fs", "move", "a.txt", "b.txt", "c.txt"};
+  const auto move_args = std::vector<std::string_view> {
+      "mg", "fs", "move", "a.txt", "b.txt", "c.txt"};
   const auto move_result = mg::run(move_args);
 
   REQUIRE(move_result.has_value());
@@ -1402,9 +1412,15 @@ TEST_CASE("fs command aliases route through public CLI", "[mg]")
   auto capture = CapturedRuntime {};
   mg::current_runtime().fs_cwd = temp.path;
 
-  REQUIRE(
-      run_args({"mg", "--dry-run", "fs", "touch", "--dir", "-r", "src/", "notes.txt"})
-          .has_value());
+  REQUIRE(run_args({"mg",
+                    "--dry-run",
+                    "fs",
+                    "touch",
+                    "--dir",
+                    "-r",
+                    "src/",
+                    "notes.txt"})
+              .has_value());
   REQUIRE(capture.out.str().find("[dry-run] Create directory: src/")
           != std::string::npos);
   REQUIRE(capture.out.str().find("[dry-run] Create directory: notes.txt")
@@ -1472,7 +1488,8 @@ TEST_CASE("fs copy requires recursive flag for directories", "[mg]")
   capture.err.clear();
   const auto copied = mg::fs::fs_copy_extended("src", "backup", true, false);
   REQUIRE(copied.has_value());
-  REQUIRE(std::filesystem::exists(temp.path / "backup" / "nested" / "data.txt"));
+  REQUIRE(
+      std::filesystem::exists(temp.path / "backup" / "nested" / "data.txt"));
   REQUIRE(capture.err.str().empty());
 }
 
@@ -1525,16 +1542,19 @@ TEST_CASE("fs remove wildcard deletes recursive matches", "[mg]")
   const auto temp = TemporaryDirectory {"fs-remove-recursive-wildcard"};
   auto capture = CapturedRuntime {};
   mg::current_runtime().fs_cwd = temp.path;
-  write_test_file(temp.path / "build" / "mobile" / "cache" / "app.tmp", "tmp\n");
-  write_test_file(temp.path / "build" / "mobile" / "cache" / "keep.txt", "keep\n");
+  write_test_file(temp.path / "build" / "mobile" / "cache" / "app.tmp",
+                  "tmp\n");
+  write_test_file(temp.path / "build" / "mobile" / "cache" / "keep.txt",
+                  "keep\n");
 
-  const auto result = mg::fs::fs_remove_wildcard("build/**/*.tmp", false, false);
+  const auto result =
+      mg::fs::fs_remove_wildcard("build/**/*.tmp", false, false);
 
   REQUIRE(result.has_value());
-  REQUIRE_FALSE(
-      std::filesystem::exists(temp.path / "build" / "mobile" / "cache" / "app.tmp"));
-  REQUIRE(std::filesystem::exists(
-      temp.path / "build" / "mobile" / "cache" / "keep.txt"));
+  REQUIRE_FALSE(std::filesystem::exists(temp.path / "build" / "mobile" / "cache"
+                                        / "app.tmp"));
+  REQUIRE(std::filesystem::exists(temp.path / "build" / "mobile" / "cache"
+                                  / "keep.txt"));
   REQUIRE(capture.err.str().empty());
 }
 
@@ -1560,12 +1580,14 @@ TEST_CASE("fs move reports destination parent errors", "[mg]")
   mg::current_runtime().fs_cwd = temp.path;
   write_test_file(temp.path / "draft.txt", "hello\n");
 
-  const auto missing_parent = mg::fs::fs_move("draft.txt", "missing/final.txt", false);
+  const auto missing_parent =
+      mg::fs::fs_move("draft.txt", "missing/final.txt", false);
 
   REQUIRE_FALSE(missing_parent.has_value());
   REQUIRE(missing_parent.error() == mg::MgError::move_failed);
-  REQUIRE(capture.err.str().find("Destination parent directory not found: missing")
-          != std::string::npos);
+  REQUIRE(
+      capture.err.str().find("Destination parent directory not found: missing")
+      != std::string::npos);
   REQUIRE(std::filesystem::exists(temp.path / "draft.txt"));
   REQUIRE_FALSE(std::filesystem::exists(temp.path / "missing" / "final.txt"));
 
@@ -1573,11 +1595,13 @@ TEST_CASE("fs move reports destination parent errors", "[mg]")
   capture.err.clear();
   write_test_file(temp.path / "parent.txt", "not a directory\n");
 
-  const auto file_parent = mg::fs::fs_move("draft.txt", "parent.txt/final.txt", false);
+  const auto file_parent =
+      mg::fs::fs_move("draft.txt", "parent.txt/final.txt", false);
 
   REQUIRE_FALSE(file_parent.has_value());
   REQUIRE(file_parent.error() == mg::MgError::move_failed);
-  REQUIRE(capture.err.str().find("Destination parent is not a directory: parent.txt")
+  REQUIRE(capture.err.str().find(
+              "Destination parent is not a directory: parent.txt")
           != std::string::npos);
   REQUIRE(std::filesystem::exists(temp.path / "draft.txt"));
 }
@@ -1609,7 +1633,8 @@ TEST_CASE("fs exists reports present and missing paths", "[mg]")
   mg::fs::fs_exists("missing.txt", false);
 
   REQUIRE(capture.out.str().find("Exists: present.txt") != std::string::npos);
-  REQUIRE(capture.out.str().find("Not found: missing.txt") != std::string::npos);
+  REQUIRE(capture.out.str().find("Not found: missing.txt")
+          != std::string::npos);
   REQUIRE(capture.err.str().empty());
 }
 

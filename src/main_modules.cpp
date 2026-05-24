@@ -5,14 +5,14 @@ import mg;
 
 namespace
 {
-auto run() -> int
+int run()
 {
   std::cout << mg::project_name() << ' ' << mg::project_version() << '\n';
   return 0;
 }
-} // namespace
+}  // namespace
 
-auto main() noexcept(false) -> int
+int main() noexcept(false)
 {
   try {
     return run();

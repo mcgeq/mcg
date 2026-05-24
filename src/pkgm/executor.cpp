@@ -1,10 +1,5 @@
-#include <mg/pkgm/executor.hpp>
-
-#include <mg/core/logger.hpp>
-#include <mg/pkgm/registry.hpp>
-
-#include <cerrno>
 #include <cctype>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -15,6 +10,10 @@
 #include <string_view>
 #include <system_error>
 #include <vector>
+
+#include <mg/core/logger.hpp>
+#include <mg/pkgm/executor.hpp>
+#include <mg/pkgm/registry.hpp>
 
 #if defined(_WIN32)
 #  include <process.h>
@@ -36,8 +35,7 @@ namespace mg::pkgm
 {
 namespace
 {
-[[nodiscard]] auto preview_token_needs_quoting(std::string_view token) noexcept
-    -> bool
+[[nodiscard]] bool preview_token_needs_quoting(std::string_view token) noexcept
 {
   if (token.empty()) {
     return true;
@@ -79,8 +77,7 @@ void append_preview_token(std::string& out, std::string_view token)
   out += '"';
 }
 
-[[nodiscard]] auto make_c_argv(std::span<const std::string> argv)
-    -> std::vector<char*>
+[[nodiscard]] std::vector<char*> make_c_argv(std::span<const std::string> argv)
 {
   auto c_argv = std::vector<char*> {};
   c_argv.reserve(argv.size() + 1);
@@ -92,8 +89,8 @@ void append_preview_token(std::string& out, std::string_view token)
 }
 
 #if defined(_WIN32)
-[[nodiscard]] auto iequals_ascii(std::string_view left,
-                                 std::string_view right) noexcept -> bool
+[[nodiscard]] bool iequals_ascii(std::string_view left,
+                                 std::string_view right) noexcept
 {
   if (left.size() != right.size()) {
     return false;
@@ -110,8 +107,8 @@ void append_preview_token(std::string& out, std::string_view token)
   return true;
 }
 
-[[nodiscard]] auto split_windows_list(std::string_view value, char separator)
-    -> std::vector<std::string>
+[[nodiscard]] std::vector<std::string> split_windows_list(
+    std::string_view value, char separator)
 {
   auto parts = std::vector<std::string> {};
   auto begin = std::size_t {};
@@ -131,18 +128,20 @@ void append_preview_token(std::string& out, std::string_view token)
   return parts;
 }
 
-[[nodiscard]] auto read_windows_env(std::string_view name)
-    -> std::optional<std::string>
+[[nodiscard]] std::optional<std::string> read_windows_env(std::string_view name)
 {
 #  if defined(_MSC_VER)
   char* raw_value = nullptr;
   size_t raw_size = 0;
   const auto key = std::string {name};
-  if (_dupenv_s(&raw_value, &raw_size, key.c_str()) != 0 || raw_value == nullptr) {
+  if (_dupenv_s(&raw_value, &raw_size, key.c_str()) != 0
+      || raw_value == nullptr)
+  {
     return std::nullopt;
   }
 
-  auto guard = std::unique_ptr<char, decltype(&std::free)> {raw_value, &std::free};
+  auto guard =
+      std::unique_ptr<char, decltype(&std::free)> {raw_value, &std::free};
   auto value = std::string {guard.get()};
   if (value.empty()) {
     return std::nullopt;
@@ -168,7 +167,7 @@ void append_preview_token(std::string& out, std::string_view token)
 #  endif
 }
 
-[[nodiscard]] auto windows_path_extensions() -> std::vector<std::string>
+[[nodiscard]] std::vector<std::string> windows_path_extensions()
 {
   const auto pathext = read_windows_env("PATHEXT");
   if (pathext.has_value()) {
@@ -178,20 +177,20 @@ void append_preview_token(std::string& out, std::string_view token)
   return {".COM", ".EXE", ".BAT", ".CMD", ".PS1"};
 }
 
-[[nodiscard]] auto executable_exists(const std::filesystem::path& path) -> bool
+[[nodiscard]] bool executable_exists(const std::filesystem::path& path)
 {
   auto ec = std::error_code {};
   return std::filesystem::exists(path, ec) && !ec
       && !std::filesystem::is_directory(path, ec);
 }
 
-[[nodiscard]] auto resolve_in_dir(const std::filesystem::path& dir,
-                                  const std::filesystem::path& command)
-    -> std::optional<std::filesystem::path>
+[[nodiscard]] std::optional<std::filesystem::path> resolve_in_dir(
+    const std::filesystem::path& dir, const std::filesystem::path& command)
 {
   const auto candidate = dir / command;
   if (candidate.has_extension()) {
-    return executable_exists(candidate) ? std::optional {candidate} : std::nullopt;
+    return executable_exists(candidate) ? std::optional {candidate}
+                                        : std::nullopt;
   }
 
   for (const auto& extension : windows_path_extensions()) {
@@ -204,19 +203,22 @@ void append_preview_token(std::string& out, std::string_view token)
   return std::nullopt;
 }
 
-[[nodiscard]] auto resolve_windows_command(std::string_view command)
-    -> std::optional<std::filesystem::path>
+[[nodiscard]] std::optional<std::filesystem::path> resolve_windows_command(
+    std::string_view command)
 {
   const auto command_path = std::filesystem::path {command};
   if (command_path.is_absolute() || command_path.has_parent_path()) {
-    if (auto resolved = resolve_in_dir(command_path.parent_path(),
-                                       command_path.filename())) {
+    if (auto resolved =
+            resolve_in_dir(command_path.parent_path(), command_path.filename()))
+    {
       return resolved;
     }
     return std::nullopt;
   }
 
-  if (auto resolved = resolve_in_dir(std::filesystem::current_path(), command_path)) {
+  if (auto resolved =
+          resolve_in_dir(std::filesystem::current_path(), command_path))
+  {
     return resolved;
   }
 
@@ -234,13 +236,13 @@ void append_preview_token(std::string& out, std::string_view token)
   return std::nullopt;
 }
 
-[[nodiscard]] auto is_powershell_script(const std::filesystem::path& path) -> bool
+[[nodiscard]] bool is_powershell_script(const std::filesystem::path& path)
 {
   return iequals_ascii(path.extension().string(), ".ps1");
 }
 
-[[nodiscard]] auto windows_spawn_argv(std::span<const std::string> argv)
-    -> std::expected<std::vector<std::string>, MgError>
+[[nodiscard]] std::expected<std::vector<std::string>, MgError>
+windows_spawn_argv(std::span<const std::string> argv)
 {
   if (argv.empty()) {
     return std::unexpected {MgError::command_failed};
@@ -270,11 +272,11 @@ void append_preview_token(std::string& out, std::string_view token)
 #endif
 }  // namespace
 
-auto build_argv(ManagerType manager,
-                std::string_view action,
-                const CommandArgs& command_args,
-                const PackageOptions& options)
-    -> std::expected<std::vector<std::string>, MgError>
+std::expected<std::vector<std::string>, MgError> build_argv(
+    ManagerType manager,
+    std::string_view action,
+    const CommandArgs& command_args,
+    const PackageOptions& options)
 {
   auto argv = std::vector<std::string> {};
   argv.emplace_back(get_manager_name(manager));
@@ -284,9 +286,9 @@ auto build_argv(ManagerType manager,
   return argv;
 }
 
-auto format_command_preview(std::span<const std::string> argv,
-                            const std::optional<std::filesystem::path>& cwd)
-    -> std::string
+std::string format_command_preview(
+    std::span<const std::string> argv,
+    const std::optional<std::filesystem::path>& cwd)
 {
   auto out = std::string {};
   if (cwd) {
@@ -306,23 +308,24 @@ auto format_command_preview(std::span<const std::string> argv,
 }
 
 #if defined(_WIN32)
-auto resolve_windows_command_for_test(std::string_view command)
-    -> std::optional<std::filesystem::path>
+std::optional<std::filesystem::path> resolve_windows_command_for_test(
+    std::string_view command)
 {
   return resolve_windows_command(command);
 }
 #endif
 
-auto run_process(std::span<const std::string> argv,
-                 const std::optional<std::filesystem::path>& cwd)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> run_process(
+    std::span<const std::string> argv,
+    const std::optional<std::filesystem::path>& cwd)
 {
   if (argv.empty()) {
     return std::unexpected {MgError::command_failed};
   }
 
   const auto previous_path = std::filesystem::current_path();
-  auto restore_cwd = [&previous_path] {
+  auto restore_cwd = [&previous_path]
+  {
     std::error_code ignored;
     std::filesystem::current_path(previous_path, ignored);
   };
@@ -400,10 +403,10 @@ auto run_process(std::span<const std::string> argv,
   return {};
 }
 
-auto execute_argv_in_cwd(std::span<const std::string> argv,
-                         bool dry_run,
-                         const std::optional<std::filesystem::path>& cwd)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> execute_argv_in_cwd(
+    std::span<const std::string> argv,
+    bool dry_run,
+    const std::optional<std::filesystem::path>& cwd)
 {
   if (argv.empty()) {
     return std::unexpected {MgError::command_failed};
@@ -425,16 +428,16 @@ auto execute_argv_in_cwd(std::span<const std::string> argv,
   return {};
 }
 
-auto execute_argv(std::span<const std::string> argv, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> execute_argv(std::span<const std::string> argv,
+                                          bool dry_run)
 {
   return execute_argv_in_cwd(argv, dry_run, std::nullopt);
 }
 
-auto execute(ManagerType manager,
-             std::string_view action,
-             const CommandArgs& command_args,
-             const PackageOptions& options) -> std::expected<void, MgError>
+std::expected<void, MgError> execute(ManagerType manager,
+                                     std::string_view action,
+                                     const CommandArgs& command_args,
+                                     const PackageOptions& options)
 {
   auto argv = build_argv(manager, action, command_args, options);
   if (!argv) {

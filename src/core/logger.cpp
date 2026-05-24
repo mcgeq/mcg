@@ -1,11 +1,10 @@
-#include <mg/core/logger.hpp>
-
-#include <mg/core/runtime.hpp>
-#include <mg/core/types.hpp>
-
 #include <array>
 #include <format>
 #include <string>
+
+#include <mg/core/logger.hpp>
+#include <mg/core/runtime.hpp>
+#include <mg/core/types.hpp>
 
 namespace mg
 {
@@ -20,7 +19,7 @@ constexpr auto ansi_error = std::string_view {"\x1b[31m"};
 
 auto global_logger = Logger {};
 
-[[nodiscard]] auto color_for(LogLevel level) noexcept -> std::string_view
+[[nodiscard]] std::string_view color_for(LogLevel level) noexcept
 {
   switch (level) {
     case LogLevel::trace:
@@ -46,11 +45,11 @@ Logger::Logger(LogLevel level_value)
 {
 }
 
-auto Logger::should_log(LogLevel message_level) const noexcept -> bool
+bool Logger::should_log(LogLevel message_level) const noexcept
 {
   return level != LogLevel::off
       && static_cast<unsigned char>(message_level)
-             >= static_cast<unsigned char>(level);
+      >= static_cast<unsigned char>(level);
 }
 
 void Logger::log(LogLevel message_level, std::string_view message)
@@ -59,7 +58,8 @@ void Logger::log(LogLevel message_level, std::string_view message)
     return;
   }
 
-  const auto color = enable_ansi ? color_for(message_level) : std::string_view {};
+  const auto color =
+      enable_ansi ? color_for(message_level) : std::string_view {};
   const auto reset = enable_ansi ? ansi_reset : std::string_view {};
   const auto rendered = std::format("{}[{}]{}\n    {}\n",
                                     color,
@@ -91,12 +91,12 @@ void Logger::info_multi(std::span<const std::string_view> messages)
   write_stdout(rendered);
 }
 
-auto logger() -> Logger&
+Logger& logger()
 {
   return global_logger;
 }
 
-auto parse_log_level(std::string_view level) noexcept -> LogLevel
+LogLevel parse_log_level(std::string_view level) noexcept
 {
   if (iequals(level, "trace")) {
     return LogLevel::trace;
@@ -119,7 +119,7 @@ auto parse_log_level(std::string_view level) noexcept -> LogLevel
   return LogLevel::info;
 }
 
-auto level_name(LogLevel level) noexcept -> std::string_view
+std::string_view level_name(LogLevel level) noexcept
 {
   switch (level) {
     case LogLevel::trace:
@@ -139,7 +139,7 @@ auto level_name(LogLevel level) noexcept -> std::string_view
   return "";
 }
 
-auto trim_trailing_newline(std::string_view message) noexcept -> std::string_view
+std::string_view trim_trailing_newline(std::string_view message) noexcept
 {
   if (!message.empty() && message.back() == '\n') {
     message.remove_suffix(1);

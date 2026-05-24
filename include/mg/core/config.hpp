@@ -2,9 +2,10 @@
 
 #include <expected>
 #include <filesystem>
-#include <mg/core/error.hpp>
 #include <optional>
 #include <string_view>
+
+#include <mg/core/error.hpp>
 
 namespace mg::config
 {
@@ -17,16 +18,15 @@ struct Environment
   std::optional<std::filesystem::path> localappdata {};
 };
 
-[[nodiscard]] auto current_environment() -> Environment;
-[[nodiscard]] auto find_config_file(std::string_view filename)
-    -> std::optional<std::filesystem::path>;
-[[nodiscard]] auto find_config_file_from(const std::filesystem::path& start_dir,
-                                         std::string_view filename)
-    -> std::optional<std::filesystem::path>;
-[[nodiscard]] auto get_config_dir() -> std::expected<std::filesystem::path, MgError>;
-[[nodiscard]] auto get_config_dir(const Environment& environment)
-    -> std::expected<std::filesystem::path, MgError>;
-[[nodiscard]] auto get_cache_dir() -> std::expected<std::filesystem::path, MgError>;
-[[nodiscard]] auto get_cache_dir(const Environment& environment)
-    -> std::expected<std::filesystem::path, MgError>;
+[[nodiscard]] Environment current_environment();
+[[nodiscard]] std::optional<std::filesystem::path> find_config_file(
+    std::string_view filename);
+[[nodiscard]] std::optional<std::filesystem::path> find_config_file_from(
+    const std::filesystem::path& start_dir, std::string_view filename);
+[[nodiscard]] std::expected<std::filesystem::path, MgError> get_config_dir();
+[[nodiscard]] std::expected<std::filesystem::path, MgError> get_config_dir(
+    const Environment& environment);
+[[nodiscard]] std::expected<std::filesystem::path, MgError> get_cache_dir();
+[[nodiscard]] std::expected<std::filesystem::path, MgError> get_cache_dir(
+    const Environment& environment);
 }  // namespace mg::config

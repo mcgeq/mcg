@@ -1,12 +1,12 @@
-#include <mg/mg.hpp>
-
 #include <iostream>
 #include <string_view>
 #include <vector>
 
+#include <mg/mg.hpp>
+
 namespace
 {
-auto run_cli(int argc, char** argv) -> int
+int run_cli(int argc, char** argv)
 {
   auto args = std::vector<std::string_view> {};
   args.reserve(static_cast<std::size_t>(argc));
@@ -25,9 +25,9 @@ auto run_cli(int argc, char** argv) -> int
   }
   return 0;
 }
-} // namespace
+}  // namespace
 
-auto main(int argc, char** argv) noexcept(false) -> int
+int main(int argc, char** argv) noexcept(false)
 {
   try {
     return run_cli(argc, argv);

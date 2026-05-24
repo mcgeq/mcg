@@ -1,13 +1,12 @@
-#include <mg/app.hpp>
+#include <filesystem>
+#include <optional>
 
+#include <mg/app.hpp>
 #include <mg/cli/help.hpp>
 #include <mg/cli/parser.hpp>
 #include <mg/core/logger.hpp>
 #include <mg/pkgm/core.hpp>
 #include <mg/pkgm/registry.hpp>
-
-#include <filesystem>
-#include <optional>
 
 namespace mg
 {
@@ -42,10 +41,10 @@ enum class PackageOptionResult
   stop_error,
 };
 
-[[nodiscard]] auto parse_package_option(PackageInvocation& parsed,
-                                        std::span<const std::string_view> args,
-                                        std::size_t& index)
-    -> PackageOptionResult
+[[nodiscard]] PackageOptionResult parse_package_option(
+    PackageInvocation& parsed,
+    std::span<const std::string_view> args,
+    std::size_t& index)
 {
   const auto arg = args[index];
 
@@ -91,7 +90,8 @@ enum class PackageOptionResult
   }
 
   if (starts_with(arg, "--group=") || starts_with(arg, "--profile=")) {
-    const auto value = starts_with(arg, "--group=") ? arg.substr(8) : arg.substr(10);
+    const auto value =
+        starts_with(arg, "--group=") ? arg.substr(8) : arg.substr(10);
     if (!parsed.options.add_profile(value)) {
       log_error("Too many profile names specified (max {})",
                 PackageOptions::max_profiles);
@@ -113,8 +113,8 @@ enum class PackageOptionResult
   return PackageOptionResult::not_option;
 }
 
-[[nodiscard]] auto parse_package_invocation(std::span<const std::string_view> args)
-    -> PackageParseResult
+[[nodiscard]] PackageParseResult parse_package_invocation(
+    std::span<const std::string_view> args)
 {
   auto index = std::size_t {1};
   auto parsed = PackageInvocation {};
@@ -164,11 +164,12 @@ action_found:
     ++index;
   }
 
-  return {.kind = PackageParseKind::invocation, .invocation = std::move(parsed)};
+  return {.kind = PackageParseKind::invocation,
+          .invocation = std::move(parsed)};
 }
 }  // namespace
 
-auto run(std::span<const std::string_view> args) -> std::expected<void, MgError>
+std::expected<void, MgError> run(std::span<const std::string_view> args)
 {
   if (args.size() < 2) {
     cli::print_help();
@@ -207,19 +208,20 @@ auto run(std::span<const std::string_view> args) -> std::expected<void, MgError>
   auto& invocation = package_parse.invocation;
   if (invocation.command_args.packages.empty()
       && invocation.command_args.manager_args.empty()
-      && pkgm::action_requires_packages(invocation.action)) {
+      && pkgm::action_requires_packages(invocation.action))
+  {
     log_error("No packages specified");
     return {};
   }
 
   if (invocation.command_args.packages.empty()
-      && pkgm::action_requires_run_target(invocation.action)) {
+      && pkgm::action_requires_run_target(invocation.action))
+  {
     log_error("No run target specified");
     return {};
   }
 
-  return pkgm::execute_command(invocation.action,
-                               invocation.command_args,
-                               invocation.options);
+  return pkgm::execute_command(
+      invocation.action, invocation.command_args, invocation.options);
 }
 }  // namespace mg

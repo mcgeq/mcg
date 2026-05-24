@@ -1,15 +1,14 @@
-#include <mg/fs/core.hpp>
-
-#include <mg/core/logger.hpp>
-#include <mg/core/runtime.hpp>
-#include <mg/core/types.hpp>
-
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <mg/core/logger.hpp>
+#include <mg/core/runtime.hpp>
+#include <mg/core/types.hpp>
+#include <mg/fs/core.hpp>
 
 namespace mg::fs
 {
@@ -64,12 +63,12 @@ enum class MoveFailure
   other,
 };
 
-[[nodiscard]] auto base_dir() -> std::filesystem::path
+[[nodiscard]] std::filesystem::path base_dir()
 {
   return get_fs_cwd().value_or(std::filesystem::current_path());
 }
 
-[[nodiscard]] auto rooted(std::string_view path) -> std::filesystem::path
+[[nodiscard]] std::filesystem::path rooted(std::string_view path)
 {
   const auto candidate = std::filesystem::path {path};
   if (candidate.is_absolute()) {
@@ -78,20 +77,20 @@ enum class MoveFailure
   return base_dir() / candidate;
 }
 
-[[nodiscard]] auto is_path_separator(char ch) noexcept -> bool
+[[nodiscard]] bool is_path_separator(char ch) noexcept
 {
   return ch == '/' || ch == '\\';
 }
 
-[[nodiscard]] auto normalize_pattern(std::string_view pattern) -> std::string
+[[nodiscard]] std::string normalize_pattern(std::string_view pattern)
 {
   auto normalized = std::string {pattern};
   std::ranges::replace(normalized, '\\', '/');
   return normalized;
 }
 
-[[nodiscard]] auto split_path_segments(std::string_view path)
-    -> std::vector<std::string_view>
+[[nodiscard]] std::vector<std::string_view> split_path_segments(
+    std::string_view path)
 {
   auto segments = std::vector<std::string_view> {};
   auto pos = std::size_t {};
@@ -110,8 +109,8 @@ enum class MoveFailure
   return segments;
 }
 
-[[nodiscard]] auto wildcard_segment_matches(std::string_view path,
-                                            std::string_view pattern) -> bool
+[[nodiscard]] bool wildcard_segment_matches(std::string_view path,
+                                            std::string_view pattern)
 {
   if (pattern.empty()) {
     return path.empty();
@@ -133,18 +132,17 @@ enum class MoveFailure
   return false;
 }
 
-[[nodiscard]] auto matches_path_segments(std::span<const std::string_view> path,
-                                         std::span<const std::string_view> pattern)
-    -> bool
+[[nodiscard]] bool matches_path_segments(
+    std::span<const std::string_view> path,
+    std::span<const std::string_view> pattern)
 {
   if (pattern.empty()) {
     return path.empty();
   }
 
   if (path.empty()) {
-    return std::ranges::all_of(pattern, [](std::string_view segment) {
-      return segment == "**";
-    });
+    return std::ranges::all_of(
+        pattern, [](std::string_view segment) { return segment == "**"; });
   }
 
   if (pattern.front() == "**") {
@@ -156,16 +154,16 @@ enum class MoveFailure
       && matches_path_segments(path.subspan(1), pattern.subspan(1));
 }
 
-[[nodiscard]] auto matches_path_pattern(std::string_view path,
-                                        std::string_view pattern) -> bool
+[[nodiscard]] bool matches_path_pattern(std::string_view path,
+                                        std::string_view pattern)
 {
   const auto path_segments = split_path_segments(path);
   const auto pattern_segments = split_path_segments(pattern);
   return matches_path_segments(path_segments, pattern_segments);
 }
 
-[[nodiscard]] auto build_wildcard_search_plan(std::string_view raw_pattern)
-    -> std::optional<WildcardSearchPlan>
+[[nodiscard]] std::optional<WildcardSearchPlan> build_wildcard_search_plan(
+    std::string_view raw_pattern)
 {
   auto pattern = normalize_pattern(raw_pattern);
   const auto first_wildcard = pattern.find_first_of("*?");
@@ -175,17 +173,16 @@ enum class MoveFailure
 
   const auto prefix = pattern.substr(0, first_wildcard);
   const auto sep = prefix.find_last_of("/\\");
-  auto relative_pattern = sep == std::string_view::npos
-                              ? pattern
-                              : pattern.substr(sep + 1);
+  auto relative_pattern =
+      sep == std::string_view::npos ? pattern : pattern.substr(sep + 1);
   if (relative_pattern.empty()) {
     return std::nullopt;
   }
 
   const auto recursive = relative_pattern.find('/') != std::string::npos;
   const auto root = sep == std::string_view::npos
-                        ? base_dir()
-                        : rooted(pattern.substr(0, sep));
+      ? base_dir()
+      : rooted(pattern.substr(0, sep));
   return WildcardSearchPlan {
       .root = root,
       .relative_pattern = std::move(relative_pattern),
@@ -193,7 +190,7 @@ enum class MoveFailure
   };
 }
 
-[[nodiscard]] auto wildcard_matches(std::string_view pattern) -> WildcardMatches
+[[nodiscard]] WildcardMatches wildcard_matches(std::string_view pattern)
 {
   auto matches = WildcardMatches {};
   const auto plan = build_wildcard_search_plan(pattern);
@@ -203,18 +200,21 @@ enum class MoveFailure
 
   auto ec = std::error_code {};
   if (!std::filesystem::exists(plan->root, ec)
-      || !std::filesystem::is_directory(plan->root, ec)) {
+      || !std::filesystem::is_directory(plan->root, ec))
+  {
     matches.root_missing = true;
     return matches;
   }
 
   if (plan->recursive) {
-    for (auto iter = std::filesystem::recursive_directory_iterator {plan->root, ec};
+    for (auto iter =
+             std::filesystem::recursive_directory_iterator {plan->root, ec};
          !ec && iter != std::filesystem::recursive_directory_iterator {};
-         iter.increment(ec)) {
+         iter.increment(ec))
+    {
       ec.clear();
-      const auto rel =
-          std::filesystem::relative(iter->path(), plan->root, ec).generic_string();
+      const auto rel = std::filesystem::relative(iter->path(), plan->root, ec)
+                           .generic_string();
       if (!ec && matches_path_pattern(rel, plan->relative_pattern)) {
         matches.entries.push_back(WildcardMatch {
             .path = iter->path(),
@@ -227,7 +227,8 @@ enum class MoveFailure
 
   for (auto iter = std::filesystem::directory_iterator {plan->root, ec};
        !ec && iter != std::filesystem::directory_iterator {};
-       iter.increment(ec)) {
+       iter.increment(ec))
+  {
     const auto name = iter->path().filename().generic_string();
     if (wildcard_segment_matches(name, plan->relative_pattern)) {
       matches.entries.push_back(WildcardMatch {
@@ -239,7 +240,7 @@ enum class MoveFailure
   return matches;
 }
 
-[[nodiscard]] auto detect_path_kind(std::string_view path) -> PathKind
+[[nodiscard]] PathKind detect_path_kind(std::string_view path)
 {
   std::error_code ec;
   const auto target = rooted(path);
@@ -259,8 +260,7 @@ enum class MoveFailure
   return PathKind::other;
 }
 
-[[nodiscard]] auto destination_parent_status(std::string_view path)
-    -> ParentPathStatus
+[[nodiscard]] ParentPathStatus destination_parent_status(std::string_view path)
 {
   const auto parent = std::filesystem::path {path}.parent_path();
   if (parent.empty() || parent == ".") {
@@ -305,10 +305,9 @@ void report_destination_parent_status(std::string_view path,
   }
 }
 
-[[nodiscard]] auto classify_move_failure(std::string_view src,
-                                         std::string_view dst,
-                                         const std::error_code& ec)
-    -> MoveFailure
+[[nodiscard]] MoveFailure classify_move_failure(std::string_view src,
+                                                std::string_view dst,
+                                                const std::error_code& ec)
 {
   if (detect_path_kind(src) == PathKind::missing) {
     return MoveFailure::source_missing;
@@ -396,10 +395,10 @@ void report_move_failure(std::string_view src,
 }
 }  // namespace
 
-auto fs_create_extended(std::string_view path,
-                        bool is_dir,
-                        bool recursive,
-                        bool dry_run) -> std::expected<void, MgError>
+std::expected<void, MgError> fs_create_extended(std::string_view path,
+                                                bool is_dir,
+                                                bool recursive,
+                                                bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Create {}: {}", is_dir ? "directory" : "file", path);
@@ -421,7 +420,8 @@ auto fs_create_extended(std::string_view path,
   if (recursive) {
     std::filesystem::create_directories(target.parent_path(), ec);
     if (ec) {
-      log_error("Failed to create parent directory: {}", target.parent_path().string());
+      log_error("Failed to create parent directory: {}",
+                target.parent_path().string());
       return std::unexpected {MgError::create_dir_failed};
     }
   }
@@ -435,8 +435,9 @@ auto fs_create_extended(std::string_view path,
   return {};
 }
 
-auto fs_remove(std::string_view path, bool recursive, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> fs_remove(std::string_view path,
+                                       bool recursive,
+                                       bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Remove: {}", path);
@@ -468,8 +469,9 @@ auto fs_remove(std::string_view path, bool recursive, bool dry_run)
   return {};
 }
 
-auto fs_remove_wildcard(std::string_view pattern, bool recursive, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> fs_remove_wildcard(std::string_view pattern,
+                                                bool recursive,
+                                                bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Remove: {}", pattern);
@@ -487,7 +489,8 @@ auto fs_remove_wildcard(std::string_view pattern, bool recursive, bool dry_run)
   }
 
   for (const auto& match : matches.entries) {
-    const auto rel = std::filesystem::relative(match.path, base_dir()).generic_string();
+    const auto rel =
+        std::filesystem::relative(match.path, base_dir()).generic_string();
     auto result = fs_remove(rel, recursive, false);
     if (!result) {
       return result;
@@ -496,10 +499,10 @@ auto fs_remove_wildcard(std::string_view pattern, bool recursive, bool dry_run)
   return {};
 }
 
-auto fs_copy_extended(std::string_view src,
-                      std::string_view dst,
-                      bool recursive,
-                      bool dry_run) -> std::expected<void, MgError>
+std::expected<void, MgError> fs_copy_extended(std::string_view src,
+                                              std::string_view dst,
+                                              bool recursive,
+                                              bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] {}: {} -> {}",
@@ -522,19 +525,18 @@ auto fs_copy_extended(std::string_view src,
       log_error("{} is a directory, use --recursive", src);
       return {};
     }
-    std::filesystem::copy(source,
-                          target,
-                          std::filesystem::copy_options::recursive
-                              | std::filesystem::copy_options::overwrite_existing,
-                          ec);
+    std::filesystem::copy(
+        source,
+        target,
+        std::filesystem::copy_options::recursive
+            | std::filesystem::copy_options::overwrite_existing,
+        ec);
     if (!ec) {
       log_info("Copied directory: {} -> {}", src, dst);
     }
   } else {
-    std::filesystem::copy_file(source,
-                               target,
-                               std::filesystem::copy_options::overwrite_existing,
-                               ec);
+    std::filesystem::copy_file(
+        source, target, std::filesystem::copy_options::overwrite_existing, ec);
     if (!ec) {
       log_info("Copied: {} -> {}", src, dst);
     }
@@ -547,8 +549,9 @@ auto fs_copy_extended(std::string_view src,
   return {};
 }
 
-auto fs_move(std::string_view src, std::string_view dst, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> fs_move(std::string_view src,
+                                     std::string_view dst,
+                                     bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Move: {} -> {}", src, dst);
@@ -565,7 +568,7 @@ auto fs_move(std::string_view src, std::string_view dst, bool dry_run)
   return {};
 }
 
-auto fs_list(std::string_view path, bool dry_run) -> std::expected<void, MgError>
+std::expected<void, MgError> fs_list(std::string_view path, bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] List: {}", path);
@@ -595,8 +598,8 @@ auto fs_list(std::string_view path, bool dry_run) -> std::expected<void, MgError
   return {};
 }
 
-auto fs_list_wildcard(std::string_view pattern, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> fs_list_wildcard(std::string_view pattern,
+                                              bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] List: {}", pattern);
@@ -644,7 +647,7 @@ void fs_exists(std::string_view path, bool dry_run)
   }
 }
 
-auto fs_read(std::string_view path, bool dry_run) -> std::expected<void, MgError>
+std::expected<void, MgError> fs_read(std::string_view path, bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Read: {}", path);
@@ -663,8 +666,9 @@ auto fs_read(std::string_view path, bool dry_run) -> std::expected<void, MgError
   return {};
 }
 
-auto fs_write(std::string_view path, std::string_view content, bool dry_run)
-    -> std::expected<void, MgError>
+std::expected<void, MgError> fs_write(std::string_view path,
+                                      std::string_view content,
+                                      bool dry_run)
 {
   if (dry_run) {
     log_info("[dry-run] Write {} bytes to: {}", content.size(), path);
